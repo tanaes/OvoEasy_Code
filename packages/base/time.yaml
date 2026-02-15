@@ -1,0 +1,16 @@
+i2c:
+  id: i2c_bus
+
+time:
+  - platform: ds1307
+    id: rtc_time
+    i2c_id: i2c_bus
+    address: 0x68
+    update_interval: 15min
+
+  - platform: sntp
+    id: ntp_time
+    timezone: "America/New_York"
+    on_time_sync:
+      - ds1307.write_time:
+          id: rtc_time

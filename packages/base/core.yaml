@@ -1,0 +1,59 @@
+esphome:
+  name: ovoeasy
+  name_add_mac_suffix: true
+  friendly_name: "OvoEasy Incubator"
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.flash_size: 16MB
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    version: recommended
+  flash_size: 16MB
+
+psram:
+  mode: quad
+  speed: 80MHz
+
+logger:
+  level: INFO
+  baud_rate: 115200
+
+api:
+  encryption:
+    key: !secret ha_api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+web_server:
+  port: 80
+
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: diagnostic
+
+sensor:
+  - platform: uptime
+    name: "Uptime"
+    id: uptime_sensor
+    entity_category: diagnostic
+    update_interval: 60s
+
+  - platform: internal_temperature
+    name: "ESP32 Temperature"
+    entity_category: diagnostic
+    update_interval: 60s
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      entity_category: diagnostic
+    mac_address:
+      name: "MAC Address"
+      entity_category: diagnostic

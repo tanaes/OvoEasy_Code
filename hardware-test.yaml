@@ -1,0 +1,289 @@
+# Hardware Test — PCB Commissioning Config
+# Flash this first to validate all hardware before production firmware.
+# All I/O exposed as simple switches. I2C scan enabled. Sensors report raw.
+
+esphome:
+  name: ovoeasy-test
+  friendly_name: "OvoEasy Hardware Test"
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.flash_size: 16MB
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    version: recommended
+  flash_size: 16MB
+
+psram:
+  mode: quad
+  speed: 80MHz
+
+logger:
+  level: DEBUG
+  baud_rate: 115200
+
+api:
+
+ota:
+  - platform: esphome
+
+web_server:
+  port: 80
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "OvoEasy-Test"
+    password: !secret ap_password
+
+captive_portal:
+
+button:
+  - platform: restart
+    name: "Restart"
+
+# --- I2C Bus (scan enabled) ---
+i2c:
+  id: i2c_bus
+  sda: GPIO8
+  scl: GPIO9
+  scan: true
+  frequency: 100kHz
+
+# --- SPI Bus ---
+spi:
+  id: spi_bus
+  clk_pin: GPIO12
+  mosi_pin: GPIO11
+  miso_pin: GPIO13
+
+# --- Environmental Sensors ---
+sensor:
+  - platform: sht4x
+    i2c_id: i2c_bus
+    address: 0x44
+    precision: High
+    temperature:
+      name: "Test SHT45 Temp"
+    humidity:
+      name: "Test SHT45 Humidity"
+    update_interval: 5s
+
+  - platform: hdc1080
+    i2c_id: i2c_bus
+    address: 0x40
+    temperature:
+      name: "Test HDC1080 Temp"
+    humidity:
+      name: "Test HDC1080 Humidity"
+    update_interval: 5s
+
+  - platform: bme280_i2c
+    i2c_id: i2c_bus
+    address: 0x76
+    temperature:
+      name: "Test BME280 Temp"
+    humidity:
+      name: "Test BME280 Humidity"
+    pressure:
+      name: "Test BME280 Pressure"
+    update_interval: 5s
+
+  # ADS1115
+  - platform: ads1115
+    multiplexer: "A0_GND"
+    gain: 4.096
+    name: "Test Water Level ADC"
+    update_interval: 2s
+    id: test_adc_a0
+
+  - platform: ads1115
+    multiplexer: "A1_GND"
+    gain: 4.096
+    name: "Test Thermistor ADC"
+    update_interval: 2s
+    id: test_adc_a1
+
+  - platform: ads1115
+    multiplexer: "A2_GND"
+    gain: 4.096
+    name: "Test Current ADC"
+    update_interval: 2s
+    id: test_adc_a2
+
+  - platform: ads1115
+    multiplexer: "A3_GND"
+    gain: 4.096
+    name: "Test ADC Ch3"
+    update_interval: 2s
+    id: test_adc_a3
+
+  # Rotary encoder
+  - platform: rotary_encoder
+    name: "Test Encoder"
+    pin_a:
+      number: GPIO15
+      mode: INPUT_PULLUP
+    pin_b:
+      number: GPIO16
+      mode: INPUT_PULLUP
+    resolution: 1
+
+  # NOTE: CamConn (GPIO21) is not ADC-capable on ESP32-S3
+  # Voltage divider detected as digital threshold instead
+
+  # System
+  - platform: uptime
+    name: "Test Uptime"
+  - platform: wifi_signal
+    name: "Test WiFi Signal"
+  - platform: internal_temperature
+    name: "Test ESP32 Temp"
+
+# ADS1115 hub
+ads1115:
+  - address: 0x48
+    i2c_id: i2c_bus
+    continuous_mode: false
+
+# --- RTC ---
+time:
+  - platform: ds1307
+    id: rtc_time
+    i2c_id: i2c_bus
+    address: 0x68
+  - platform: sntp
+    id: ntp_time
+    on_time_sync:
+      - ds1307.write_time:
+          id: rtc_time
+
+# --- Buttons ---
+binary_sensor:
+  - platform: gpio
+    name: "Test Encoder Button"
+    pin:
+      number: GPIO42
+      inverted: true
+      mode: INPUT_PULLUP
+
+  - platform: gpio
+    name: "Test Button A (BOOT)"
+    pin:
+      number: GPIO0
+      inverted: true
+      mode: INPUT_PULLUP
+
+  - platform: gpio
+    name: "Test Button B"
+    pin:
+      number: GPIO45
+      inverted: true
+      mode: INPUT_PULLUP
+
+  - platform: gpio
+    name: "Test Button C"
+    pin:
+      number: GPIO46
+      inverted: true
+      mode: INPUT_PULLUP
+
+  # Camera connection detect (digital — GPIO21 not ADC-capable on S3)
+  # Voltage divider: ~1.65V when connected (reads HIGH with pulldown)
+  - platform: gpio
+    name: "Test Camera Connected"
+    pin:
+      number: GPIO21
+      mode: INPUT
+
+# --- MOSFET Outputs as Switches ---
+switch:
+  - platform: gpio
+    name: "Test FAN (GPIO4)"
+    pin: GPIO4
+    id: test_fan
+
+  - platform: gpio
+    name: "Test HEATER (GPIO5)"
+    pin: GPIO5
+    id: test_heater
+
+  - platform: gpio
+    name: "Test WATER PUMP (GPIO6)"
+    pin: GPIO6
+    id: test_water
+
+  - platform: gpio
+    name: "Test VACUUM (GPIO7)"
+    pin: GPIO7
+    id: test_vacuum
+
+  - platform: gpio
+    name: "Test HUMIDITY (GPIO2)"
+    pin: GPIO2
+    id: test_humidity
+
+  - platform: gpio
+    name: "Test HUMIDITY2 (GPIO3)"
+    pin: GPIO3
+    id: test_humidity2
+
+# --- LEDs ---
+light:
+  - platform: esp32_rmt_led_strip
+    id: test_status_leds
+    name: "Test Status LEDs"
+    pin: GPIO47
+    num_leds: 6
+    rgb_order: GRB
+    chipset: WS2812
+    effects:
+      - addressable_rainbow:
+          name: "Rainbow"
+          speed: 10
+
+  - platform: esp32_rmt_led_strip
+    id: test_chamber_leds
+    name: "Test Chamber LEDs"
+    pin: GPIO1
+    num_leds: 2
+    rgb_order: RGB
+    chipset: WS2811
+
+# --- Display ---
+font:
+  - file: "gfonts://Roboto"
+    id: test_font
+    size: 20
+  - file: "gfonts://Roboto"
+    id: test_font_sm
+    size: 14
+
+display:
+  - platform: ili9xxx
+    model: ILI9341
+    spi_id: spi_bus
+    cs_pin: GPIO10
+    dc_pin: GPIO38
+    reset_pin: GPIO41
+    invert_colors: false
+    rotation: 90
+    dimensions:
+      height: 240
+      width: 320
+    update_interval: 2s
+    lambda: |-
+      it.print(10, 10, id(test_font), "HARDWARE TEST");
+      it.print(10, 35, id(test_font_sm), "All systems active");
+      it.printf(10, 60, id(test_font_sm), "WiFi: %s", WiFi.localIP().toString().c_str());
+      it.printf(10, 80, id(test_font_sm), "I2C scan: check logs");
+
+# --- UART (camera bridge test) ---
+uart:
+  id: cam_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO18
+  baud_rate: 115200

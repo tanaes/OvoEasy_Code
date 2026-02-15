@@ -1,0 +1,15 @@
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+  ap:
+    ssid: "OvoEasy Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    entity_category: diagnostic
+    update_interval: 60s

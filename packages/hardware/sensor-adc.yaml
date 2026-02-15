@@ -1,0 +1,83 @@
+# ADS1115 ADC (0x48) — water level, thermistor, current monitor
+
+ads1115:
+  - address: 0x48
+    i2c_id: i2c_bus
+    continuous_mode: false
+
+sensor:
+  # --- Water level IR sensor (A0) ---
+  - platform: ads1115
+    id: water_level_raw
+    multiplexer: "A0_GND"
+    gain: 4.096
+    name: "Water Level Raw"
+    internal: true
+    update_interval: 5s
+    filters:
+      - sliding_window_moving_average:
+          window_size: 5
+          send_every: 1
+
+  - platform: template
+    name: "Water Level"
+    id: water_level_percent
+    unit_of_measurement: "%"
+    icon: "mdi:water-percent"
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: |-
+      // Map raw voltage to 0-100% (calibrate these values on hardware)
+      float raw = id(water_level_raw).state;
+      float pct = (raw - 0.5) / (2.5 - 0.5) * 100.0;
+      if (pct < 0.0) return 0.0;
+      if (pct > 100.0) return 100.0;
+      return pct;
+
+  # --- Optional 10k thermistor (A1) ---
+  - platform: ads1115
+    id: thermistor_raw
+    multiplexer: "A1_GND"
+    gain: 4.096
+    name: "Thermistor Raw"
+    internal: true
+    update_interval: 10s
+
+  - platform: template
+    name: "Thermistor Temperature"
+    id: thermistor_temp
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    update_interval: 10s
+    lambda: |-
+      // Steinhart-Hart for 10k NTC (B=3950)
+      // Voltage divider: Vout = Vcc * R_ntc / (R_ref + R_ntc)
+      // R_ref = 10k, Vcc = 3.3V
+      float v = id(thermistor_raw).state;
+      if (v <= 0.01 || v >= 3.29) return NAN;
+      float r_ntc = 10000.0 * v / (3.3 - v);
+      float ln_r = log(r_ntc / 10000.0);
+      float t_kelvin = 1.0 / (1.0/298.15 + ln_r/3950.0);
+      return t_kelvin - 273.15;
+
+  # --- eFuse current monitor (A2) ---
+  - platform: ads1115
+    id: current_monitor_raw
+    multiplexer: "A2_GND"
+    gain: 4.096
+    name: "Current Monitor Raw"
+    internal: true
+    update_interval: 10s
+
+  - platform: template
+    name: "System Current"
+    id: system_current
+    unit_of_measurement: "A"
+    device_class: current
+    accuracy_decimals: 2
+    update_interval: 10s
+    lambda: |-
+      // TPS259470 current monitor: I_OUT = V_ILM [uV] / (887 * 182)
+      float v_ilm_uv = id(current_monitor_raw).state * 1000000.0;
+      return v_ilm_uv / (887.0 * 182.0);

@@ -1,0 +1,115 @@
+# Environmental sensors: SHT45, HDC1080, BME280
+# All three are always monitored. A global select chooses which feeds control loops.
+
+sensor:
+  # --- SHT45 (0x44) ---
+  - platform: sht4x
+    i2c_id: i2c_bus
+    address: 0x44
+    precision: High
+    heater_max_duty: 0.0
+    temperature:
+      name: "SHT45 Temperature"
+      id: sht45_temp
+      accuracy_decimals: 2
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+    humidity:
+      name: "SHT45 Humidity"
+      id: sht45_humidity
+      accuracy_decimals: 1
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+    update_interval: 10s
+
+  # --- HDC1080 (0x40) ---
+  - platform: hdc1080
+    i2c_id: i2c_bus
+    address: 0x40
+    temperature:
+      name: "HDC1080 Temperature"
+      id: hdc1080_temp
+      accuracy_decimals: 2
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+    humidity:
+      name: "HDC1080 Humidity"
+      id: hdc1080_humidity
+      accuracy_decimals: 1
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+    update_interval: 10s
+
+  # --- BME280 (0x76) ---
+  - platform: bme280_i2c
+    i2c_id: i2c_bus
+    address: 0x76
+    temperature:
+      name: "BME280 Temperature"
+      id: bme280_temp
+      accuracy_decimals: 2
+      oversampling: 16x
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+    humidity:
+      name: "BME280 Humidity"
+      id: bme280_humidity
+      accuracy_decimals: 1
+      oversampling: 16x
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+    pressure:
+      name: "BME280 Pressure"
+      id: bme280_pressure
+      accuracy_decimals: 1
+      oversampling: 16x
+    update_interval: 10s
+
+  # --- Template sensors: route selected sensor to control loops ---
+  - platform: template
+    name: "Control Temperature"
+    id: control_temp
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 2
+    update_interval: 10s
+    lambda: |-
+      auto selection = id(control_sensor_select).active_index();
+      if (selection.has_value()) {
+        switch (selection.value()) {
+          case 0: return id(sht45_temp).state;
+          case 1: return id(hdc1080_temp).state;
+          case 2: return id(bme280_temp).state;
+        }
+      }
+      return id(sht45_temp).state;
+
+  - platform: template
+    name: "Control Humidity"
+    id: control_humidity
+    unit_of_measurement: "%"
+    device_class: humidity
+    accuracy_decimals: 1
+    update_interval: 10s
+    lambda: |-
+      auto selection = id(control_sensor_select).active_index();
+      if (selection.has_value()) {
+        switch (selection.value()) {
+          case 0: return id(sht45_humidity).state;
+          case 1: return id(hdc1080_humidity).state;
+          case 2: return id(bme280_humidity).state;
+        }
+      }
+      return id(sht45_humidity).state;

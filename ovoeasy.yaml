@@ -1,0 +1,43 @@
+# OvoEasy Incubator Controller — Production Firmware
+# Single image for entire fleet. Per-unit config via HA or local UI.
+
+packages:
+  # Base platform
+  core: !include packages/base/core.yaml
+  network: !include packages/base/network-wifi.yaml
+  time: !include packages/base/time.yaml
+
+  # Hardware buses
+  i2c: !include packages/hardware/i2c-bus.yaml
+  spi: !include packages/hardware/spi-bus.yaml
+
+  # Sensors
+  env_sensors: !include packages/hardware/sensors-env.yaml
+  adc: !include packages/hardware/sensor-adc.yaml
+
+  # I/O
+  input: !include packages/hardware/input.yaml
+  outputs: !include packages/hardware/outputs.yaml
+  leds_status: !include packages/hardware/leds-status.yaml
+  leds_chamber: !include packages/hardware/leds-chamber.yaml
+  display: !include packages/hardware/display.yaml
+
+  # Runtime configuration
+  globals: !include packages/control/globals.yaml
+
+  # Control loops (Phase 2)
+  # climate_temp: !include packages/control/climate-temperature.yaml
+  # climate_humidity: !include packages/control/climate-humidity.yaml
+  # water_fill: !include packages/control/water-fill.yaml
+
+  # UI (Phase 3)
+  # display_pages: !include packages/ui/display-pages.yaml
+  # status_leds: !include packages/ui/status-leds.yaml
+
+  # Logging (Phase 3)
+  # telemetry: !include packages/logging/telemetry.yaml
+  # sdcard_logger: !include packages/logging/sdcard-logger.yaml
+
+  # Optional (Phase 4)
+  # ethernet: !include packages/base/network-ethernet.yaml
+  # camera: !include packages/hardware/uart-camera.yaml

@@ -1,0 +1,25 @@
+# ESPHome
+.esphome/
+build/
+*.bin
+*.elf
+
+# Secrets
+secrets.yaml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

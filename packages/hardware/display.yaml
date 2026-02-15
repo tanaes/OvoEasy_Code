@@ -1,0 +1,102 @@
+# ILI9341 2.4" TFT display (320x240, SPI, vertical orientation)
+
+font:
+  - file: "gfonts://Roboto"
+    id: font_large
+    size: 24
+  - file: "gfonts://Roboto"
+    id: font_medium
+    size: 16
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 12
+
+color:
+  - id: color_white
+    white: 100%
+  - id: color_red
+    red: 100%
+  - id: color_green
+    green: 100%
+  - id: color_blue
+    blue: 100%
+  - id: color_yellow
+    red: 100%
+    green: 100%
+  - id: color_cyan
+    green: 100%
+    blue: 100%
+  - id: color_dark
+    red: 20%
+    green: 20%
+    blue: 20%
+
+display:
+  - platform: ili9xxx
+    id: tft_display
+    model: ILI9341
+    spi_id: spi_bus
+    cs_pin: GPIO10
+    dc_pin: GPIO38
+    reset_pin: GPIO41
+    invert_colors: false
+    rotation: 90
+    dimensions:
+      height: 240
+      width: 320
+    update_interval: 1s
+    lambda: |-
+      // Status page - basic layout for Phase 1
+      int w = it.get_width();
+      int h = it.get_height();
+
+      // Header
+      it.print(w/2, 5, id(font_large), id(color_white), TextAlign::TOP_CENTER, "OvoEasy");
+
+      // Temperature
+      if (!isnan(id(control_temp).state)) {
+        it.printf(10, 45, id(font_medium), id(color_yellow), "Temp: %.1f°C", id(control_temp).state);
+      } else {
+        it.print(10, 45, id(font_medium), id(color_red), "Temp: --.-°C");
+      }
+
+      // Humidity
+      if (!isnan(id(control_humidity).state)) {
+        it.printf(10, 70, id(font_medium), id(color_cyan), "Humidity: %.0f%%", id(control_humidity).state);
+      } else {
+        it.print(10, 70, id(font_medium), id(color_red), "Humidity: --%");
+      }
+
+      // Water level
+      if (!isnan(id(water_level_percent).state)) {
+        auto color = id(water_level_percent).state < 30 ? id(color_red) : id(color_blue);
+        it.printf(10, 95, id(font_medium), color, "Water: %.0f%%", id(water_level_percent).state);
+      } else {
+        it.print(10, 95, id(font_medium), id(color_red), "Water: --%");
+      }
+
+      // System current
+      if (!isnan(id(system_current).state)) {
+        it.printf(10, 120, id(font_small), id(color_white), "Current: %.2fA", id(system_current).state);
+      }
+
+      // Separator
+      it.horizontal_line(5, 142, w - 10, id(color_dark));
+
+      // Sensor readings (all three)
+      it.print(10, 150, id(font_small), id(color_dark), "Sensor Comparison:");
+      if (!isnan(id(sht45_temp).state)) {
+        it.printf(10, 165, id(font_small), id(color_white), "SHT45:  %.2f°C  %.1f%%",
+          id(sht45_temp).state, id(sht45_humidity).state);
+      }
+      if (!isnan(id(hdc1080_temp).state)) {
+        it.printf(10, 180, id(font_small), id(color_white), "HDC:    %.2f°C  %.1f%%",
+          id(hdc1080_temp).state, id(hdc1080_humidity).state);
+      }
+      if (!isnan(id(bme280_temp).state)) {
+        it.printf(10, 195, id(font_small), id(color_white), "BME:    %.2f°C  %.1f%%",
+          id(bme280_temp).state, id(bme280_humidity).state);
+      }
+
+      // Footer - uptime and IP
+      it.printf(10, h - 15, id(font_small), id(color_dark), "Up: %.0fs", id(uptime_sensor).state);

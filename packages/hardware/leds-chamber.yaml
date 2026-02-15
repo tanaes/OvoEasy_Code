@@ -1,0 +1,19 @@
+# WS2811 interior chamber lighting (2 chips on GPIO1)
+# Each chip: R channel = Red LEDs, G channel = IR LEDs, B channel = White LEDs
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: chamber_leds
+    name: "Chamber Lights"
+    pin: GPIO1
+    num_leds: 2
+    rgb_order: RGB
+    chipset: WS2811
+    default_transition_length: 500ms
+    effects:
+      - pulse:
+          name: "Breathing"
+          min_brightness: 30%
+          max_brightness: 100%
+          transition_length: 2s
+          update_interval: 2s

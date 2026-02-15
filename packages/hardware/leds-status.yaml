@@ -1,0 +1,28 @@
+# WS2812B status LEDs (6 LEDs on GPIO47)
+# LED 0: Power/heartbeat
+# LED 1: WiFi status
+# LED 2: Heater active
+# LED 3: Humidifier active
+# LED 4: Water fill active
+# LED 5: Error indicator
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: status_leds
+    name: "Status LEDs"
+    pin: GPIO47
+    num_leds: 6
+    rgb_order: GRB
+    chipset: WS2812
+    default_transition_length: 0ms
+    effects:
+      - addressable_rainbow:
+          name: "Rainbow"
+          speed: 10
+          width: 6
+      - pulse:
+          name: "Pulse"
+          min_brightness: 20%
+          max_brightness: 100%
+          transition_length: 1s
+          update_interval: 1s

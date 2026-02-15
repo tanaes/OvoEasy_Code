@@ -1,0 +1,67 @@
+# MOSFET outputs — PWM for heater/fan, binary for pumps/humidifier
+
+output:
+  # PWM outputs for PID control
+  - platform: ledc
+    pin: GPIO4
+    id: fan_pwm
+    frequency: 1000Hz
+
+  - platform: ledc
+    pin: GPIO5
+    id: heater_pwm
+    frequency: 1000Hz
+
+  # Binary outputs
+  - platform: gpio
+    pin: GPIO2
+    id: humidity_output
+    inverted: false
+
+  - platform: gpio
+    pin: GPIO3
+    id: humidity2_output
+    inverted: false
+
+  - platform: gpio
+    pin: GPIO6
+    id: water_pump_output
+    inverted: false
+
+  - platform: gpio
+    pin: GPIO7
+    id: vacuum_pump_output
+    inverted: false
+
+# Expose binary outputs as switches for manual control
+switch:
+  - platform: output
+    name: "Humidifier"
+    id: humidifier_switch
+    output: humidity_output
+    entity_category: ""
+
+  - platform: output
+    name: "Humidifier 2"
+    id: humidifier2_switch
+    output: humidity2_output
+    entity_category: ""
+
+  - platform: output
+    name: "Water Pump"
+    id: water_pump_switch
+    output: water_pump_output
+    entity_category: ""
+
+  - platform: output
+    name: "Vacuum Pump"
+    id: vacuum_pump_switch
+    output: vacuum_pump_output
+    entity_category: ""
+
+fan:
+  - platform: speed
+    name: "Incubator Fan"
+    id: incubator_fan
+    output: fan_pwm
+    speed_count: 100

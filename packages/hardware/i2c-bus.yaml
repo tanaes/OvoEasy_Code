@@ -1,0 +1,6 @@
+i2c:
+  id: i2c_bus
+  sda: GPIO8
+  scl: GPIO9
+  scan: true
+  frequency: 100kHz

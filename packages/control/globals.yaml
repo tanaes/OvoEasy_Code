@@ -1,0 +1,166 @@
+# Runtime-configurable globals — persisted in flash, editable via HA or local UI
+
+globals:
+  - id: target_temp
+    type: float
+    restore_value: true
+    initial_value: "37.5"
+
+  - id: target_humidity
+    type: float
+    restore_value: true
+    initial_value: "55.0"
+
+  - id: water_target
+    type: float
+    restore_value: true
+    initial_value: "80.0"
+
+  - id: pid_kp_val
+    type: float
+    restore_value: true
+    initial_value: "0.5"
+
+  - id: pid_ki_val
+    type: float
+    restore_value: true
+    initial_value: "0.001"
+
+  - id: pid_kd_val
+    type: float
+    restore_value: true
+    initial_value: "0.1"
+
+  - id: vacuum_speed_val
+    type: float
+    restore_value: true
+    initial_value: "100.0"
+
+# HA-exposed number entities for runtime configuration
+number:
+  - platform: template
+    name: "Temperature Setpoint"
+    id: temp_setpoint
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer"
+    min_value: 20.0
+    max_value: 42.0
+    step: 0.1
+    optimistic: true
+    restore_value: true
+    initial_value: 37.5
+    set_action:
+      - globals.set:
+          id: target_temp
+          value: !lambda "return x;"
+
+  - platform: template
+    name: "Humidity Setpoint"
+    id: humidity_setpoint
+    unit_of_measurement: "%"
+    icon: "mdi:water-percent"
+    min_value: 30.0
+    max_value: 80.0
+    step: 1.0
+    optimistic: true
+    restore_value: true
+    initial_value: 55.0
+    set_action:
+      - globals.set:
+          id: target_humidity
+          value: !lambda "return x;"
+
+  - platform: template
+    name: "Water Target Level"
+    id: water_target_setpoint
+    unit_of_measurement: "%"
+    icon: "mdi:cup-water"
+    min_value: 50.0
+    max_value: 95.0
+    step: 5.0
+    optimistic: true
+    restore_value: true
+    initial_value: 80.0
+    set_action:
+      - globals.set:
+          id: water_target
+          value: !lambda "return x;"
+
+  - platform: template
+    name: "Vacuum Pump Speed"
+    id: vacuum_speed_setpoint
+    unit_of_measurement: "%"
+    icon: "mdi:fan"
+    min_value: 0.0
+    max_value: 100.0
+    step: 5.0
+    optimistic: true
+    restore_value: true
+    initial_value: 100.0
+    set_action:
+      - globals.set:
+          id: vacuum_speed_val
+          value: !lambda "return x;"
+
+  # Advanced PID tuning (entity_category: config hides from default dashboard)
+  - platform: template
+    name: "PID Kp"
+    id: pid_kp_number
+    icon: "mdi:tune"
+    entity_category: config
+    min_value: 0.0
+    max_value: 10.0
+    step: 0.001
+    optimistic: true
+    restore_value: true
+    initial_value: 0.5
+    set_action:
+      - globals.set:
+          id: pid_kp_val
+          value: !lambda "return x;"
+
+  - platform: template
+    name: "PID Ki"
+    id: pid_ki_number
+    icon: "mdi:tune"
+    entity_category: config
+    min_value: 0.0
+    max_value: 1.0
+    step: 0.0001
+    optimistic: true
+    restore_value: true
+    initial_value: 0.001
+    set_action:
+      - globals.set:
+          id: pid_ki_val
+          value: !lambda "return x;"
+
+  - platform: template
+    name: "PID Kd"
+    id: pid_kd_number
+    icon: "mdi:tune"
+    entity_category: config
+    min_value: 0.0
+    max_value: 50.0
+    step: 0.01
+    optimistic: true
+    restore_value: true
+    initial_value: 0.1
+    set_action:
+      - globals.set:
+          id: pid_kd_val
+          value: !lambda "return x;"
+
+# Sensor selection
+select:
+  - platform: template
+    name: "Control Sensor"
+    id: control_sensor_select
+    icon: "mdi:thermometer-check"
+    options:
+      - "SHT45"
+      - "HDC1080"
+      - "BME280"
+    initial_option: "SHT45"
+    optimistic: true
+    restore_value: true
