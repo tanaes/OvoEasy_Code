@@ -1,4 +1,4 @@
-# WS2812B status LEDs (6 LEDs on GPIO47)
+# WS2812B status LEDs (6 LEDs on GPIO3)
 # LED 0: Power/heartbeat
 # LED 1: WiFi status
 # LED 2: Heater active
@@ -10,7 +10,7 @@ light:
   - platform: esp32_rmt_led_strip
     id: status_leds
     name: "Status LEDs"
-    pin: GPIO47
+    pin: GPIO3
     num_leds: 6
     rgb_order: GRB
     chipset: WS2812

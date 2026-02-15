@@ -37,8 +37,8 @@ display:
     model: ILI9341
     spi_id: spi_bus
     cs_pin: GPIO10
-    dc_pin: GPIO38
-    reset_pin: GPIO41
+    dc_pin: GPIO47
+    reset_pin: GPIO16
     invert_colors: false
     rotation: 90
     dimensions:

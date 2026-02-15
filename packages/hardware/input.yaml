@@ -5,10 +5,10 @@ sensor:
     name: "Encoder"
     id: rotary_encoder_sensor
     pin_a:
-      number: GPIO15
+      number: GPIO41
       mode: INPUT_PULLUP
     pin_b:
-      number: GPIO16
+      number: GPIO40
       mode: INPUT_PULLUP
     resolution: 1
     publish_initial_value: true

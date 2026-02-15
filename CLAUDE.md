@@ -15,12 +15,13 @@ Local UI via ILI9341 + rotary encoder. Dual logging: Home Assistant + SD card.
 ```
 I2C: SDA=8, SCL=9
 SPI: MOSI=11, MISO=13, CLK=12, CS_LCD=10, CS_SD=14, ETH_CS=39
-MOSFET: FAN=4, HEATER=5, WATER=6, VACUUM=7, HUMIDITY=2, HUMIDITY2=3
-Display: ILI9341 RST=41, DC=38
-Input: Encoder A=15, B=16, BTN=42 | Buttons A=0, B=45, C=46
-LEDs: STATUS_PIX=47 (WS2812B x6), CHAMBER_PIX=1 (WS2811 x2)
+MOSFET: FAN=4, HEATER=5, WATER=6, VACUUM=7, HUMIDITY=2
+Display: ILI9341 RST=16, DC=47
+Input: Encoder A=41, B=40, BTN=42 | Buttons A=0, B=45, C=46
+LEDs: STATUS_PIX=3 (WS2812B x6), CHAMBER_PIX=1 (WS2811 x2)
 Camera: TX=17, RX=18, Detect=21
-Ethernet: ETH_CS=39, ETH_RST=40
+Ethernet: ETH_CS=39, ETH_RST=15
+Servo: SERVO_3v3=38
 Aux: LED=48
 ```
 
@@ -64,6 +65,6 @@ Located at: ../../PCB/incubator_controller/
 
 ## Known Hardware Constraints
 - **GPIO21 (CamConn) is NOT ADC-capable on ESP32-S3.** The voltage divider for camera detection must be read as digital GPIO, not analog. If true analog reading is needed, route through ADS1115 spare channel.
-- **Strapping pins** GPIO0, GPIO3, GPIO45, GPIO46 are used (buttons/humidity2). ESPHome warns but these are intentional PCB design choices.
+- **Strapping pins** GPIO0, GPIO3, GPIO45, GPIO46 are used (buttons/status LEDs). ESPHome warns but these are intentional PCB design choices.
 - **rmt_channel** is no longer a valid option for `esp32_rmt_led_strip` in ESPHome 2025.12.x — auto-assigned.
 - **invert_colors** is required for `ili9xxx` display platform in ESPHome 2025.12.x.

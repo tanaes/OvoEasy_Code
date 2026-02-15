@@ -19,11 +19,6 @@ output:
     inverted: false
 
   - platform: gpio
-    pin: GPIO3
-    id: humidity2_output
-    inverted: false
-
-  - platform: gpio
     pin: GPIO6
     id: water_pump_output
     inverted: false
@@ -39,12 +34,6 @@ switch:
     name: "Humidifier"
     id: humidifier_switch
     output: humidity_output
-    entity_category: ""
-
-  - platform: output
-    name: "Humidifier 2"
-    id: humidifier2_switch
-    output: humidity2_output
     entity_category: ""
 
   - platform: output

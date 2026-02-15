@@ -125,10 +125,10 @@ sensor:
   - platform: rotary_encoder
     name: "Test Encoder"
     pin_a:
-      number: GPIO15
+      number: GPIO41
       mode: INPUT_PULLUP
     pin_b:
-      number: GPIO16
+      number: GPIO40
       mode: INPUT_PULLUP
     resolution: 1
 
@@ -226,17 +226,12 @@ switch:
     pin: GPIO2
     id: test_humidity
 
-  - platform: gpio
-    name: "Test HUMIDITY2 (GPIO3)"
-    pin: GPIO3
-    id: test_humidity2
-
 # --- LEDs ---
 light:
   - platform: esp32_rmt_led_strip
     id: test_status_leds
     name: "Test Status LEDs"
-    pin: GPIO47
+    pin: GPIO3
     num_leds: 6
     rgb_order: GRB
     chipset: WS2812
@@ -267,8 +262,8 @@ display:
     model: ILI9341
     spi_id: spi_bus
     cs_pin: GPIO10
-    dc_pin: GPIO38
-    reset_pin: GPIO41
+    dc_pin: GPIO47
+    reset_pin: GPIO16
     invert_colors: false
     rotation: 90
     dimensions:
