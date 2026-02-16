@@ -1,0 +1,142 @@
+# Global system state machine — drives status LEDs and can be read by display
+# States: 0=NORMAL, 1=HEATING, 2=FILLING, 3=COOLDOWN, 4=ERROR_WATER, 5=ERROR_TEMP
+
+globals:
+  - id: system_state
+    type: int
+    restore_value: false
+    initial_value: "0"
+
+text_sensor:
+  - platform: template
+    name: "System State"
+    id: system_state_text
+    icon: "mdi:state-machine"
+    update_interval: 5s
+    lambda: |-
+      switch (id(system_state)) {
+        case 0: return {"NORMAL"};
+        case 1: return {"HEATING"};
+        case 2: return {"FILLING"};
+        case 3: return {"COOLDOWN"};
+        case 4: return {"ERROR_WATER"};
+        case 5: return {"ERROR_TEMP"};
+        default: return {"UNKNOWN"};
+      }
+
+interval:
+  # Evaluate system state priority every second
+  - interval: 1s
+    then:
+      - lambda: |-
+          int state = 0;  // NORMAL
+
+          // Priority 1: Water controller errors (highest)
+          if (id(water_ctrl).get_state() == water_controller::STATE_ERROR) {
+            state = 4;  // ERROR_WATER
+          }
+          // Priority 2: Temperature anomaly (PID output maxed and large error)
+          else if (!isnan(id(pid_heat_output).state) && id(pid_heat_output).state > 80.0f &&
+                   !isnan(id(pid_error_sensor).state) && std::abs(id(pid_error_sensor).state) > 2.0f) {
+            state = 5;  // ERROR_TEMP
+          }
+          // Priority 3: Water filling
+          else if (id(water_ctrl).get_state() == water_controller::STATE_FILLING) {
+            state = 2;  // FILLING
+          }
+          // Priority 4: Water cooldown
+          else if (id(water_ctrl).get_state() == water_controller::STATE_COOLDOWN) {
+            state = 3;  // COOLDOWN
+          }
+          // Priority 5: Active heating
+          else if (!isnan(id(pid_heat_output).state) && id(pid_heat_output).state > 10.0f) {
+            state = 1;  // HEATING
+          }
+
+          id(system_state) = state;
+
+          // Apply status LED effect based on state
+          auto call = id(status_leds).make_call();
+          call.set_state(true);
+          call.set_effect("System Status");
+          call.perform();
+
+# Add system status effect to status LEDs
+light:
+  - platform: esp32_rmt_led_strip
+    id: !extend status_leds
+    effects:
+      - addressable_lambda:
+          name: "System Status"
+          update_interval: 50ms
+          lambda: |-
+            static uint32_t step = 0;
+            step++;
+            int state = id(system_state);
+            int num_leds = it.size();
+
+            switch (state) {
+              case 0: {
+                // NORMAL: slow green breathing
+                float breath = (sin(step * 0.05f) + 1.0f) / 2.0f;
+                uint8_t g = 40 + (uint8_t)(breath * 80);
+                for (int i = 0; i < num_leds; i++) {
+                  it[i] = Color(0, g, 0);
+                }
+                break;
+              }
+              case 1: {
+                // HEATING: amber/orange, brightness varies with PID output
+                float heat = 0.5f;
+                if (!isnan(id(pid_heat_output).state)) {
+                  heat = id(pid_heat_output).state / 100.0f;
+                }
+                uint8_t r = (uint8_t)(255 * heat);
+                uint8_t g_val = (uint8_t)(80 * heat);
+                for (int i = 0; i < num_leds; i++) {
+                  it[i] = Color(r, g_val, 0);
+                }
+                break;
+              }
+              case 2: {
+                // FILLING: blue wave scrolling across strip
+                for (int i = 0; i < num_leds; i++) {
+                  float wave = (sin((step * 0.15f) - (i * 1.2f)) + 1.0f) / 2.0f;
+                  uint8_t b = 40 + (uint8_t)(wave * 215);
+                  it[i] = Color(0, 0, b);
+                }
+                break;
+              }
+              case 3: {
+                // COOLDOWN: dim blue steady
+                for (int i = 0; i < num_leds; i++) {
+                  it[i] = Color(0, 0, 40);
+                }
+                break;
+              }
+              case 4: {
+                // ERROR_WATER: red fast flash
+                bool on = (step % 10) < 5;
+                Color c = on ? Color(255, 0, 0) : Color(0, 0, 0);
+                for (int i = 0; i < num_leds; i++) {
+                  it[i] = c;
+                }
+                break;
+              }
+              case 5: {
+                // ERROR_TEMP: red/yellow alternating flash
+                bool phase = (step % 20) < 10;
+                Color c = phase ? Color(255, 0, 0) : Color(255, 200, 0);
+                for (int i = 0; i < num_leds; i++) {
+                  it[i] = c;
+                }
+                break;
+              }
+              default: {
+                // Unknown: all off
+                for (int i = 0; i < num_leds; i++) {
+                  it[i] = Color(0, 0, 0);
+                }
+                break;
+              }
+            }

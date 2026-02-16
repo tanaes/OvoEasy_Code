@@ -1,0 +1,59 @@
+# Humidity control via thermostat platform with native humidity support
+# Temperature actions are no-ops (PID handles temperature separately)
+# Water critical-low interlock prevents humidifier from running without water
+
+climate:
+  - platform: thermostat
+    id: humidity_climate
+    name: "Incubator Humidity"
+    sensor: control_temp
+    humidity_sensor: control_humidity
+    min_idle_time: 30s
+    min_heating_off_time: 30s
+    min_heating_run_time: 10s
+    idle_action:
+      - logger.log: "Humidity climate idle"
+    heat_action:
+      - logger.log: "Humidity climate heat (no-op, PID handles temp)"
+    humidity_control_humidify_action:
+      - if:
+          condition:
+            lambda: "return !id(water_ctrl).is_critical_low();"
+          then:
+            - output.turn_on: humidity_output
+            - logger.log: "Humidifier ON"
+          else:
+            - output.turn_off: humidity_output
+            - logger.log:
+                level: WARN
+                format: "Humidifier BLOCKED: water critically low"
+    humidity_control_off_action:
+      - output.turn_off: humidity_output
+      - logger.log: "Humidifier OFF"
+    humidity_hysteresis: 2%
+    visual:
+      min_temperature: 20.0
+      max_temperature: 42.0
+
+# Set initial target humidity from global on boot
+esphome:
+  on_boot:
+    priority: 600
+    then:
+      - lambda: |-
+          auto call = id(humidity_climate).make_call();
+          call.set_target_humidity(id(target_humidity));
+          call.perform();
+
+# Sync humidity setpoint changes from globals
+interval:
+  - interval: 30s
+    then:
+      - lambda: |-
+          float current_target = id(humidity_climate).target_humidity;
+          float desired = id(target_humidity);
+          if (!isnan(desired) && (isnan(current_target) || std::abs(current_target - desired) > 0.5f)) {
+            auto call = id(humidity_climate).make_call();
+            call.set_target_humidity(desired);
+            call.perform();
+          }

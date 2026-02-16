@@ -28,19 +28,19 @@ output:
     id: vacuum_pump_output
     inverted: false
 
-# Expose binary outputs as switches for manual control
+# Manual switches — humidifier and water pump are internal (owned by control loops)
 switch:
   - platform: output
     name: "Humidifier"
     id: humidifier_switch
     output: humidity_output
-    entity_category: ""
+    internal: true
 
   - platform: output
     name: "Water Pump"
     id: water_pump_switch
     output: water_pump_output
-    entity_category: ""
+    internal: true
 
   - platform: output
     name: "Vacuum Pump"
@@ -48,9 +48,5 @@ switch:
     output: vacuum_pump_output
     entity_category: ""
 
-fan:
-  - platform: speed
-    name: "Incubator Fan"
-    id: incubator_fan
-    output: fan_pwm
-    speed_count: 100
+# Fan is managed by PID temperature package (always-on at minimum speed)
+# No separate fan entity — fan_pwm is controlled directly via interval lambda

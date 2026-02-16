@@ -1,0 +1,73 @@
+# Water fill state machine — IDLE -> FILLING -> COOLDOWN -> ERROR
+# Uses custom water_controller component with safety timeouts
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [water_controller]
+
+water_controller:
+  id: water_ctrl
+  water_level_sensor: water_level_percent
+  pump_output: water_pump_output
+  target_level: 80.0
+  critical_low_level: 15.0
+  fill_timeout: 120s
+  cooldown_duration: 300s
+
+text_sensor:
+  - platform: template
+    name: "Water Controller State"
+    id: water_state_text
+    icon: "mdi:state-machine"
+    entity_category: diagnostic
+    update_interval: 5s
+    lambda: |-
+      return {id(water_ctrl).state_to_string(id(water_ctrl).get_state())};
+
+sensor:
+  - platform: template
+    name: "Water Fill Count"
+    id: water_fill_count
+    icon: "mdi:counter"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      return id(water_ctrl).get_fill_count();
+
+binary_sensor:
+  - platform: template
+    name: "Water Critical Low"
+    id: water_critical_low_sensor
+    device_class: problem
+    lambda: |-
+      return id(water_ctrl).is_critical_low();
+
+button:
+  - platform: template
+    name: "Reset Water Error"
+    id: water_error_reset
+    icon: "mdi:restart-alert"
+    entity_category: config
+    on_press:
+      - lambda: |-
+          id(water_ctrl).reset_error();
+
+  - platform: template
+    name: "Manual Water Fill"
+    id: water_manual_fill
+    icon: "mdi:water-plus"
+    entity_category: config
+    on_press:
+      - lambda: |-
+          id(water_ctrl).request_fill();
+
+# Sync runtime globals to water controller setpoints
+interval:
+  - interval: 30s
+    then:
+      - lambda: |-
+          id(water_ctrl).set_target_level(id(water_target));
+          id(water_ctrl).set_critical_low_level(id(water_critical_low));

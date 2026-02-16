@@ -1,0 +1,101 @@
+# PID temperature control — heater only, fan managed independently
+# Fan always runs at configurable minimum speed for air circulation
+
+climate:
+  - platform: pid
+    id: pid_climate
+    name: "Incubator Temperature"
+    sensor: control_temp
+    heat_output: heater_pwm
+    default_target_temperature: 37.5
+    visual:
+      min_temperature: 20.0
+      max_temperature: 42.0
+      temperature_step: 0.1
+    control_parameters:
+      kp: 0.5
+      ki: 0.001
+      kd: 0.1
+      output_averaging_samples: 5
+      derivative_averaging_samples: 5
+    deadband_parameters:
+      threshold_high: 0.2
+      threshold_low: -0.2
+      kp_multiplier: 0.0
+      ki_multiplier: 0.0
+      kd_multiplier: 0.0
+
+# PID diagnostic sensors
+sensor:
+  - platform: pid
+    name: "PID Result"
+    climate_id: pid_climate
+    type: RESULT
+    entity_category: diagnostic
+
+  - platform: pid
+    name: "PID Heat Output"
+    id: pid_heat_output
+    climate_id: pid_climate
+    type: HEAT
+    entity_category: diagnostic
+
+  - platform: pid
+    name: "PID Error"
+    id: pid_error_sensor
+    climate_id: pid_climate
+    type: ERROR
+    entity_category: diagnostic
+
+# PID autotune button
+button:
+  - platform: template
+    name: "PID Autotune"
+    id: pid_autotune_btn
+    icon: "mdi:auto-fix"
+    entity_category: config
+    on_press:
+      - climate.pid.autotune:
+          id: pid_climate
+          noiseband: 0.25
+          positive_output: 1.0
+          negative_output: -1.0
+
+  - platform: template
+    name: "PID Reset Integral"
+    id: pid_reset_integral_btn
+    icon: "mdi:restart"
+    entity_category: config
+    on_press:
+      - climate.pid.reset_integral_term:
+          id: pid_climate
+
+# Sync runtime PID parameters and manage fan
+interval:
+  # Sync PID gains from globals every 30s
+  - interval: 30s
+    then:
+      - climate.pid.set_control_parameters:
+          id: pid_climate
+          kp: !lambda "return id(pid_kp_val);"
+          ki: !lambda "return id(pid_ki_val);"
+          kd: !lambda "return id(pid_kd_val);"
+
+  # Fan management: always runs at minimum, ramps up on overshoot
+  - interval: 5s
+    then:
+      - lambda: |-
+          float min_speed = id(fan_min_speed);
+          float speed = min_speed;
+
+          // Ramp fan up when temperature exceeds setpoint by more than 1°C
+          float temp = id(control_temp).state;
+          float target = id(target_temp);
+          if (!isnan(temp) && temp > target + 1.0f) {
+            float overshoot = temp - target - 1.0f;
+            // Linear ramp: +20% per °C of overshoot beyond 1°C
+            float ramp = overshoot * 0.2f;
+            speed = std::min(1.0f, min_speed + ramp);
+          }
+
+          id(fan_pwm).set_level(speed);
