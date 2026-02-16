@@ -1,11 +1,60 @@
-# Global system state machine — drives status LEDs and can be read by display
-# States: 0=NORMAL, 1=HEATING, 2=FILLING, 3=COOLDOWN, 4=ERROR_WATER, 5=ERROR_TEMP
+# System state and status LED control
+#
+# LED Philosophy: Calm uniformity across fleet, animation only for problems.
+# Tier 1 (steady): Temperature deviation encoded as color across all 6 LEDs
+# Tier 2 (overlay): Brief periodic flashes for comms/notification status
+# Tier 3 (takeover): Full animation for errors requiring human attention
+#
+# States: 0=NORMAL, 1=ERROR_WATER, 2=ERROR_TEMP, 3=SENSOR_FAIL
 
 globals:
   - id: system_state
     type: int
     restore_value: false
     initial_value: "0"
+
+  - id: sensor_nan_since
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+
+  - id: ha_notification
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+# API connection status (true when HA is connected)
+binary_sensor:
+  - platform: status
+    id: api_connected
+    internal: true
+
+# HA can toggle this switch to flash the LEDs for schedule alerts, etc.
+switch:
+  - platform: template
+    name: "HA Notification"
+    id: ha_notification_switch
+    icon: "mdi:bell-alert"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    turn_on_action:
+      - globals.set:
+          id: ha_notification
+          value: "true"
+    turn_off_action:
+      - globals.set:
+          id: ha_notification
+          value: "false"
+
+button:
+  - platform: template
+    name: "Acknowledge Notification"
+    id: ack_notification_btn
+    icon: "mdi:bell-check"
+    entity_category: config
+    on_press:
+      - switch.turn_off: ha_notification_switch
 
 text_sensor:
   - platform: template
@@ -16,52 +65,55 @@ text_sensor:
     lambda: |-
       switch (id(system_state)) {
         case 0: return {"NORMAL"};
-        case 1: return {"HEATING"};
-        case 2: return {"FILLING"};
-        case 3: return {"COOLDOWN"};
-        case 4: return {"ERROR_WATER"};
-        case 5: return {"ERROR_TEMP"};
+        case 1: return {"ERROR_WATER"};
+        case 2: return {"ERROR_TEMP"};
+        case 3: return {"SENSOR_FAIL"};
         default: return {"UNKNOWN"};
       }
 
 interval:
-  # Evaluate system state priority every second
   - interval: 1s
     then:
       - lambda: |-
           int state = 0;  // NORMAL
 
-          // Priority 1: Water controller errors (highest)
-          if (id(water_ctrl).get_state() == water_controller::STATE_ERROR) {
-            state = 4;  // ERROR_WATER
+          float temp = id(control_temp).state;
+          uint32_t now = millis();
+
+          // Track sensor NaN duration
+          if (std::isnan(temp)) {
+            if (id(sensor_nan_since) == 0) {
+              id(sensor_nan_since) = now;
+            }
+            if ((now - id(sensor_nan_since)) > 60000) {
+              state = 3;  // SENSOR_FAIL after 60s of NaN
+            }
+          } else {
+            id(sensor_nan_since) = 0;
           }
-          // Priority 2: Temperature anomaly (PID output maxed and large error)
-          else if (!isnan(id(pid_heat_output).state) && id(pid_heat_output).state > 80.0f &&
-                   !isnan(id(pid_error_sensor).state) && std::abs(id(pid_error_sensor).state) > 2.0f) {
-            state = 5;  // ERROR_TEMP
+
+          // Priority 1: Temperature runaway (>3C above setpoint)
+          if (state == 0 && !std::isnan(temp)) {
+            float target = id(target_temp);
+            if (temp > target + 3.0f) {
+              state = 2;  // ERROR_TEMP
+            }
           }
-          // Priority 3: Water filling
-          else if (id(water_ctrl).get_state() == water_controller::STATE_FILLING) {
-            state = 2;  // FILLING
-          }
-          // Priority 4: Water cooldown
-          else if (id(water_ctrl).get_state() == water_controller::STATE_COOLDOWN) {
-            state = 3;  // COOLDOWN
-          }
-          // Priority 5: Active heating
-          else if (!isnan(id(pid_heat_output).state) && id(pid_heat_output).state > 10.0f) {
-            state = 1;  // HEATING
+
+          // Priority 2: Water fill timeout
+          if (state == 0 && id(water_ctrl).get_state() == water_controller::STATE_ERROR) {
+            state = 1;  // ERROR_WATER
           }
 
           id(system_state) = state;
 
-          // Apply status LED effect based on state
+          // Keep status LED effect active
           auto call = id(status_leds).make_call();
           call.set_state(true);
           call.set_effect("System Status");
           call.perform();
 
-# Add system status effect to status LEDs
+# Extend status_leds with the system status effect
 light:
   - platform: esp32_rmt_led_strip
     id: !extend status_leds
@@ -73,70 +125,87 @@ light:
             static uint32_t step = 0;
             step++;
             int state = id(system_state);
-            int num_leds = it.size();
+            int n = it.size();
 
-            switch (state) {
-              case 0: {
-                // NORMAL: slow green breathing
-                float breath = (sin(step * 0.05f) + 1.0f) / 2.0f;
-                uint8_t g = 40 + (uint8_t)(breath * 80);
-                for (int i = 0; i < num_leds; i++) {
-                  it[i] = Color(0, g, 0);
-                }
-                break;
+            // === TIER 3: Error takeover (animation = come look) ===
+
+            if (state == 2) {
+              // TEMP RUNAWAY: red/orange fast alternate (500ms cycle)
+              bool phase = (step % 10) < 5;
+              Color c = phase ? Color(255, 0, 0) : Color(255, 120, 0);
+              for (int i = 0; i < n; i++) it[i] = c;
+              return;
+            }
+
+            if (state == 1) {
+              // WATER FILL TIMEOUT: blue slow pulse (2s cycle)
+              float breath = (sin(step * 0.157f) + 1.0f) / 2.0f;
+              uint8_t b = 30 + (uint8_t)(breath * 225);
+              for (int i = 0; i < n; i++) it[i] = Color(0, 0, b);
+              return;
+            }
+
+            if (state == 3) {
+              // SENSOR FAIL: dim white, single LED scanning back and forth (~1.5s sweep)
+              for (int i = 0; i < n; i++) it[i] = Color(10, 10, 10);
+              int period = n * 2 - 2;
+              int scan = (step / 3) % period;
+              int pos = scan >= n ? period - scan : scan;
+              it[pos] = Color(80, 80, 80);
+              return;
+            }
+
+            // === TIER 1: Temperature deviation as color (steady, data-driven) ===
+            //
+            // At setpoint: soft warm white (the "all is well" color)
+            // Cool deviation: shifts toward cyan
+            // Warm deviation: shifts toward amber
+            // Mapped over +/-2C range, clamped beyond that
+
+            float pid_err = 0.0f;
+            if (!std::isnan(id(pid_error_sensor).state)) {
+              pid_err = id(pid_error_sensor).state;
+            }
+
+            // pid_error = setpoint - actual, so negate: positive = warm, negative = cool
+            float dev = std::max(-2.0f, std::min(2.0f, -pid_err));
+            // Normalize to 0..1: 0=max cool, 0.5=at setpoint, 1.0=max warm
+            float t = (dev + 2.0f) / 4.0f;
+
+            uint8_t r, g, b;
+            if (t < 0.5f) {
+              // Cool side: cyan(0,180,255) -> warm white(255,180,100)
+              float f = t * 2.0f;
+              r = (uint8_t)(f * 255);
+              g = 180;
+              b = (uint8_t)(255 - f * 155);
+            } else {
+              // Warm side: warm white(255,180,100) -> amber(255,120,0)
+              float f = (t - 0.5f) * 2.0f;
+              r = 255;
+              g = (uint8_t)(180 - f * 60);
+              b = (uint8_t)(100 - f * 100);
+            }
+
+            // Dim to comfortable ambient (~40% brightness)
+            r = r * 100 / 255;
+            g = g * 100 / 255;
+            b = b * 100 / 255;
+
+            for (int i = 0; i < n; i++) it[i] = Color(r, g, b);
+
+            // === TIER 2: Communication overlays (brief flashes over base color) ===
+
+            // HA notification: magenta flash every 3s, 300ms duration
+            if (id(ha_notification)) {
+              if ((step % 60) < 6) {
+                for (int i = 0; i < n; i++) it[i] = Color(180, 0, 180);
               }
-              case 1: {
-                // HEATING: amber/orange, brightness varies with PID output
-                float heat = 0.5f;
-                if (!isnan(id(pid_heat_output).state)) {
-                  heat = id(pid_heat_output).state / 100.0f;
-                }
-                uint8_t r = (uint8_t)(255 * heat);
-                uint8_t g_val = (uint8_t)(80 * heat);
-                for (int i = 0; i < num_leds; i++) {
-                  it[i] = Color(r, g_val, 0);
-                }
-                break;
-              }
-              case 2: {
-                // FILLING: blue wave scrolling across strip
-                for (int i = 0; i < num_leds; i++) {
-                  float wave = (sin((step * 0.15f) - (i * 1.2f)) + 1.0f) / 2.0f;
-                  uint8_t b = 40 + (uint8_t)(wave * 215);
-                  it[i] = Color(0, 0, b);
-                }
-                break;
-              }
-              case 3: {
-                // COOLDOWN: dim blue steady
-                for (int i = 0; i < num_leds; i++) {
-                  it[i] = Color(0, 0, 40);
-                }
-                break;
-              }
-              case 4: {
-                // ERROR_WATER: red fast flash
-                bool on = (step % 10) < 5;
-                Color c = on ? Color(255, 0, 0) : Color(0, 0, 0);
-                for (int i = 0; i < num_leds; i++) {
-                  it[i] = c;
-                }
-                break;
-              }
-              case 5: {
-                // ERROR_TEMP: red/yellow alternating flash
-                bool phase = (step % 20) < 10;
-                Color c = phase ? Color(255, 0, 0) : Color(255, 200, 0);
-                for (int i = 0; i < num_leds; i++) {
-                  it[i] = c;
-                }
-                break;
-              }
-              default: {
-                // Unknown: all off
-                for (int i = 0; i < num_leds; i++) {
-                  it[i] = Color(0, 0, 0);
-                }
-                break;
+            }
+
+            // HA disconnected: amber blink every 5s, 200ms duration
+            if (!id(api_connected).state) {
+              if ((step % 100) < 4) {
+                for (int i = 0; i < n; i++) it[i] = Color(200, 100, 0);
               }
             }
