@@ -85,15 +85,15 @@ display:
 
       // Sensor readings (all three)
       it.print(10, 150, id(font_small), id(color_dark), "Sensor Comparison:");
-      if (!isnan(id(sht45_temp).state)) {
+      if (!isnan(id(sht45_temp).state) && !isnan(id(sht45_humidity).state)) {
         it.printf(10, 165, id(font_small), id(color_white), "SHT45:  %.2f°C  %.1f%%",
           id(sht45_temp).state, id(sht45_humidity).state);
       }
-      if (!isnan(id(hdc1080_temp).state)) {
+      if (!isnan(id(hdc1080_temp).state) && !isnan(id(hdc1080_humidity).state)) {
         it.printf(10, 180, id(font_small), id(color_white), "HDC:    %.2f°C  %.1f%%",
           id(hdc1080_temp).state, id(hdc1080_humidity).state);
       }
-      if (!isnan(id(bme280_temp).state)) {
+      if (!isnan(id(bme280_temp).state) && !isnan(id(bme280_humidity).state)) {
         it.printf(10, 195, id(font_small), id(color_white), "BME:    %.2f°C  %.1f%%",
           id(bme280_temp).state, id(bme280_humidity).state);
       }

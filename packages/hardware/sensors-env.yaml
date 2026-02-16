@@ -92,8 +92,12 @@ sensor:
           case 0: return id(sht45_temp).state;
           case 1: return id(hdc1080_temp).state;
           case 2: return id(bme280_temp).state;
+          default:
+            ESP_LOGW("control", "Invalid sensor index %d, defaulting to SHT45", selection.value());
+            return id(sht45_temp).state;
         }
       }
+      ESP_LOGW("control", "No sensor selected, defaulting to SHT45");
       return id(sht45_temp).state;
 
   - platform: template
@@ -110,6 +114,10 @@ sensor:
           case 0: return id(sht45_humidity).state;
           case 1: return id(hdc1080_humidity).state;
           case 2: return id(bme280_humidity).state;
+          default:
+            ESP_LOGW("control", "Invalid sensor index %d, defaulting to SHT45", selection.value());
+            return id(sht45_humidity).state;
         }
       }
+      ESP_LOGW("control", "No sensor selected, defaulting to SHT45");
       return id(sht45_humidity).state;
