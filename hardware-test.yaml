@@ -235,6 +235,8 @@ light:
     num_leds: 6
     rgb_order: GRB
     chipset: WS2812
+    use_psram: false
+    rmt_symbols: 48
     effects:
       - addressable_rainbow:
           name: "Rainbow"
@@ -247,6 +249,9 @@ light:
     num_leds: 2
     rgb_order: RGB
     chipset: WS2811
+    is_rgbw: false
+    use_psram: false
+    rmt_symbols: 48
 
 # --- Display ---
 font:
@@ -265,15 +270,20 @@ display:
     dc_pin: GPIO47
     reset_pin: GPIO16
     invert_colors: false
-    rotation: 90
+    rotation: 180
     dimensions:
-      height: 240
-      width: 320
+      height: 320
+      width: 240
     update_interval: 2s
     lambda: |-
       it.print(10, 10, id(test_font), "HARDWARE TEST");
       it.print(10, 35, id(test_font_sm), "All systems active");
-      it.printf(10, 60, id(test_font_sm), "WiFi: %s", WiFi.localIP().toString().c_str());
+      auto ips = network::get_ip_addresses();
+      if (!ips.empty()) {
+        it.printf(10, 60, id(test_font_sm), "WiFi: %s", ips[0].str().c_str());
+      } else {
+        it.print(10, 60, id(test_font_sm), "WiFi: not connected");
+      }
       it.printf(10, 80, id(test_font_sm), "I2C scan: check logs");
 
 # --- UART (camera bridge test) ---

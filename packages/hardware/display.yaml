@@ -40,10 +40,10 @@ display:
     dc_pin: GPIO47
     reset_pin: GPIO16
     invert_colors: false
-    rotation: 90
+    rotation: 180
     dimensions:
-      height: 240
-      width: 320
+      height: 320
+      width: 240
     update_interval: 1s
     lambda: |-
       // Status page - basic layout for Phase 1

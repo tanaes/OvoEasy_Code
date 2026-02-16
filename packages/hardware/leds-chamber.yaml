@@ -9,6 +9,9 @@ light:
     num_leds: 2
     rgb_order: RGB
     chipset: WS2811
+    is_rgbw: false
+    use_psram: false
+    rmt_symbols: 48
     default_transition_length: 500ms
     effects:
       - pulse:

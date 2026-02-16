@@ -14,6 +14,8 @@ light:
     num_leds: 6
     rgb_order: GRB
     chipset: WS2812
+    use_psram: false
+    rmt_symbols: 48
     default_transition_length: 0ms
     effects:
       - addressable_rainbow:
