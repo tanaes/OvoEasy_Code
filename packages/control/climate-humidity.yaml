@@ -21,14 +21,17 @@ climate:
             lambda: "return !id(water_ctrl).is_critical_low();"
           then:
             - output.turn_on: humidity_output
+            - lambda: "id(water_ctrl).set_humidifier_active(true);"
             - logger.log: "Humidifier ON"
           else:
             - output.turn_off: humidity_output
+            - lambda: "id(water_ctrl).set_humidifier_active(false);"
             - logger.log:
                 level: WARN
                 format: "Humidifier BLOCKED: water critically low"
     humidity_control_off_action:
       - output.turn_off: humidity_output
+      - lambda: "id(water_ctrl).set_humidifier_active(false);"
       - logger.log: "Humidifier OFF"
     humidity_hysteresis: 2%
     visual:

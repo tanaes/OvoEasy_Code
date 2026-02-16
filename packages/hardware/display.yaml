@@ -67,13 +67,10 @@ display:
         it.print(10, 70, id(font_medium), id(color_red), "Humidity: --%");
       }
 
-      // Water level
-      if (!isnan(id(water_level_percent).state)) {
-        auto color = id(water_level_percent).state < 30 ? id(color_red) : id(color_blue);
-        it.printf(10, 95, id(font_medium), color, "Water: %.0f%%", id(water_level_percent).state);
-      } else {
-        it.print(10, 95, id(font_medium), id(color_red), "Water: --%");
-      }
+      // Water level (model estimate)
+      float est = id(water_ctrl).get_estimated_level();
+      auto water_color = est < 30 ? id(color_red) : id(color_blue);
+      it.printf(10, 95, id(font_medium), water_color, "Water: ~%.0f%%", est);
 
       // System current
       if (!isnan(id(system_current).state)) {

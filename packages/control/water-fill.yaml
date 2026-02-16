@@ -1,5 +1,6 @@
-# Water fill state machine — IDLE -> FILLING -> COOLDOWN -> ERROR
-# Uses custom water_controller component with safety timeouts
+# Water fill state machine — edge-based with model estimator
+# Uses binary float switch (ADS1115 raw voltage) for full/not-full detection
+# Model tracks estimated level between edges using fill/drain rates
 
 external_components:
   - source:
@@ -9,9 +10,12 @@ external_components:
 
 water_controller:
   id: water_ctrl
-  water_level_sensor: water_level_percent
+  water_level_sensor: water_level_raw
   pump_output: water_pump_output
-  target_level: 80.0
+  float_switch_threshold: 1.5  # Active-low: voltage below this = full (~0V immersed, ~3.2V dry)
+  pump_fill_rate: 1.0
+  drain_rate: 0.1
+  fill_trigger_level: 30.0
   critical_low_level: 15.0
   fill_timeout: 120s
   cooldown_duration: 300s
@@ -36,6 +40,28 @@ sensor:
     update_interval: 10s
     lambda: |-
       return id(water_ctrl).get_fill_count();
+
+  - platform: template
+    name: "Water Estimated Level"
+    id: water_estimated_level
+    unit_of_measurement: "%"
+    icon: "mdi:water-percent"
+    entity_category: diagnostic
+    accuracy_decimals: 1
+    update_interval: 5s
+    lambda: |-
+      return id(water_ctrl).get_estimated_level();
+
+  - platform: template
+    name: "Water Model Uncertainty"
+    id: water_model_uncertainty
+    unit_of_measurement: "%"
+    icon: "mdi:sigma"
+    entity_category: diagnostic
+    accuracy_decimals: 1
+    update_interval: 10s
+    lambda: |-
+      return id(water_ctrl).get_uncertainty();
 
 binary_sensor:
   - platform: template
@@ -69,5 +95,8 @@ interval:
   - interval: 30s
     then:
       - lambda: |-
-          id(water_ctrl).set_target_level(id(water_target));
+          id(water_ctrl).set_fill_trigger_level(id(water_fill_trigger));
           id(water_ctrl).set_critical_low_level(id(water_critical_low));
+          id(water_ctrl).set_pump_fill_rate(id(pump_fill_rate));
+          id(water_ctrl).set_drain_rate(id(atomizer_drain_rate));
+          id(water_ctrl).set_float_switch_threshold(id(float_switch_threshold));
