@@ -33,6 +33,9 @@ class SdLogger : public Component {
 
  protected:
   void mount_card_();
+  void unmount_card_();
+  void mark_card_removed_();
+  bool check_card_present_();
   void flush_buffer_();
   void rotate_file_if_needed_();
   void cleanup_old_files_();
@@ -53,6 +56,9 @@ class SdLogger : public Component {
   uint32_t last_flush_ms_{0};
   std::string current_file_date_;
   std::string current_file_path_;
+  uint32_t last_remount_attempt_ms_{0};
+  uint32_t last_health_check_ms_{0};
+  bool stale_vfs_{false};
 };
 
 }  // namespace sd_logger

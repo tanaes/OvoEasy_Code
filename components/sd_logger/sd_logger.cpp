@@ -39,6 +39,16 @@ void SdLogger::setup() {
 void SdLogger::mount_card_() {
   this->mount_attempted_ = true;
 
+  // If previous mount was lost to hot removal, clean up stale VFS/FatFS state.
+  // esp_vfs_fat_sdcard_unmount is safe here because the VFS/FatFS structures
+  // are in RAM — it won't try to write to the (now-present) new card.
+  if (this->stale_vfs_) {
+    ESP_LOGI(TAG, "Cleaning up stale VFS from previous hot removal");
+    // card_ was nulled in mark_card_removed_, pass nullptr
+    esp_vfs_fat_sdcard_unmount(MOUNT_POINT, nullptr);
+    this->stale_vfs_ = false;
+  }
+
   ESP_LOGI(TAG, "Mounting SD card on SPI2_HOST, CS=GPIO%d...", this->cs_pin_);
 
   // Step 1: Add SD card as a device on the EXISTING SPI bus.
@@ -128,12 +138,81 @@ void SdLogger::mount_card_() {
   ESP_LOGI(TAG, "SD card mounted: %s", diag.c_str());
 }
 
-void SdLogger::loop() {
+void SdLogger::unmount_card_() {
   if (!this->mounted_) {
     return;
   }
+  esp_vfs_fat_sdcard_unmount(MOUNT_POINT, this->card_);
+  sdspi_host_remove_device(this->sdspi_handle_);
+  this->card_ = nullptr;
+  this->sdspi_handle_ = 0;
+  this->mounted_ = false;
+  this->current_file_date_.clear();
+  this->current_file_path_.clear();
+  ESP_LOGI(TAG, "SD card unmounted");
+}
 
+void SdLogger::mark_card_removed_() {
+  // "Soft" unmount — card is physically gone, so don't call
+  // esp_vfs_fat_sdcard_unmount() which may try to flush dirty
+  // buffers to the missing card and crash/panic.
+  // sdspi_host_remove_device is safe — it only frees the ESP32's
+  // SPI device slot, no card communication.
+  if (this->sdspi_handle_ != 0) {
+    sdspi_host_remove_device(this->sdspi_handle_);
+  }
+  this->mounted_ = false;
+  this->card_ = nullptr;
+  this->sdspi_handle_ = 0;
+  this->current_file_date_.clear();
+  this->current_file_path_.clear();
+  this->mount_error_ = "Card removed";
+  this->stale_vfs_ = true;  // Clean up VFS on next successful mount
+  ESP_LOGW(TAG, "SD card removed (soft unmount)");
+}
+
+bool SdLogger::check_card_present_() {
+  if (this->card_ == nullptr) {
+    return false;
+  }
+  // CMD13 and f_stat are unreliable for detecting card removal:
+  // - CMD13: MISO floats high over SPI, driver sees "valid" response
+  // - f_stat: FatFS caches directory metadata in RAM, never touches card
+  // Read a raw sector to force actual SPI data transfer.
+  uint8_t buf[512];
+  esp_err_t ret = sdmmc_read_sectors(this->card_, buf, 0, 1);
+  if (ret != ESP_OK) {
+    ESP_LOGW(TAG, "SD card not responding: %s", esp_err_to_name(ret));
+    this->mark_card_removed_();
+    return false;
+  }
+  return true;
+}
+
+void SdLogger::loop() {
   uint32_t now = millis();
+
+  // If not mounted, attempt re-mount every 10 seconds
+  if (!this->mounted_) {
+    if ((now - this->last_remount_attempt_ms_) >= 10000) {
+      this->last_remount_attempt_ms_ = now;
+      this->mount_card_();
+      if (this->mounted_) {
+        this->cleanup_old_files_();
+      }
+    }
+    return;
+  }
+
+  // Health check every 2s — updates status for UI, detects card removal
+  if ((now - this->last_health_check_ms_) >= 2000) {
+    this->last_health_check_ms_ = now;
+    this->check_card_present_();
+    if (!this->mounted_) {
+      return;
+    }
+  }
+
   if ((now - this->last_flush_ms_) >= this->flush_interval_ms_ && !this->buffer_.empty()) {
     this->flush_buffer_();
     this->last_flush_ms_ = now;
@@ -161,12 +240,20 @@ void SdLogger::flush_buffer_() {
     return;
   }
 
+  // Verify card is still physically present before writing
+  if (!this->check_card_present_()) {
+    ESP_LOGW(TAG, "Flush aborted: card removed (%u rows buffered)", (unsigned) this->buffer_.size());
+    return;
+  }
+
   this->rotate_file_if_needed_();
 
   FILE *f = fopen(this->current_file_path_.c_str(), "a");
   if (f == nullptr) {
     ESP_LOGE(TAG, "Failed to open %s: errno=%d (%s)",
              this->current_file_path_.c_str(), errno, strerror(errno));
+    // I/O error likely means card was removed — soft unmount, keep buffer for re-mount
+    this->mark_card_removed_();
     return;
   }
 
@@ -269,13 +356,12 @@ const char *SdLogger::get_status() const {
   if (!this->mount_attempted_) {
     return "Initializing";
   }
-  if (!this->mount_error_.empty()) {
-    return this->mount_error_.c_str();
+  if (this->mounted_) {
+    // mount_error_ holds diagnostic trail on success (e.g. "write:ok dir1:exists dir2:exists")
+    return this->mount_error_.empty() ? "OK" : this->mount_error_.c_str();
   }
-  if (!this->mounted_) {
-    return "No SD Card";
-  }
-  return "OK";
+  // Not mounted — mount_error_ holds failure reason (e.g. "Card removed")
+  return this->mount_error_.empty() ? "No SD Card" : this->mount_error_.c_str();
 }
 
 void SdLogger::dump_config() {
