@@ -1,0 +1,84 @@
+# Contextual soft-key button actions
+# Extends binary_sensors defined in packages/hardware/input.yaml
+#
+# Physical layout (display rotated 180°):
+#   Button C (GPIO46) = TOP of screen  → Temp / Edit
+#   Button B (GPIO45) = MIDDLE         → Humid / Info
+#   Button A (GPIO0)  = BOTTOM         → System / Back
+#
+# MDI icon codepoints (4-byte UTF-8):
+#   thermometer   U+F050F = \xF3\xB0\x94\x8F
+#   water-percent U+F058E = \xF3\xB0\x96\x8E
+#   cog           U+F0493 = \xF3\xB0\x92\x93
+#   pencil        U+F03EB = \xF3\xB0\x8F\xAB
+#   info-outline  U+F02FD = \xF3\xB0\x8B\xBD
+#   arrow-left    U+F004D = \xF3\xB0\x81\x8D
+#   check         U+F012C = \xF3\xB0\x84\xAC
+
+binary_sensor:
+  - id: !extend button_c
+    on_press:
+      then:
+        - lambda: |-
+            int page = id(current_page);
+            if (page == 0) {
+              // HOME -> TEMP page
+              id(current_page) = 1;
+              lv_scr_load(page_temp->obj);
+              lv_label_set_text(lbl_btn_c, "\xF3\xB0\x8F\xAB");   // pencil
+              lv_label_set_text(lbl_btn_b, "\xF3\xB0\x8B\xBD");   // info
+              lv_label_set_text(lbl_btn_a, "\xF3\xB0\x81\x8D");   // arrow-left
+            } else if (page == 1) {
+              // TEMP: focus spinbox for encoder editing
+              lv_group_focus_obj(spinbox_temp_sp);
+            } else if (page == 2) {
+              // HUMIDITY: focus spinbox for encoder editing
+              lv_group_focus_obj(spinbox_humid_sp);
+            } else if (page == 3) {
+              // SYSTEM: acknowledge notification
+              id(ha_notification_switch).turn_off();
+            }
+
+  - id: !extend button_b
+    on_press:
+      then:
+        - lambda: |-
+            int page = id(current_page);
+            if (page == 0) {
+              // HOME -> HUMIDITY page
+              id(current_page) = 2;
+              lv_scr_load(page_humidity->obj);
+              lv_label_set_text(lbl_btn_c, "\xF3\xB0\x8F\xAB");   // pencil
+              lv_label_set_text(lbl_btn_b, "\xF3\xB0\x8B\xBD");   // info
+              lv_label_set_text(lbl_btn_a, "\xF3\xB0\x81\x8D");   // arrow-left
+            } else if (page == 1) {
+              // TEMP: focus details container for encoder scrolling
+              lv_group_focus_obj(temp_details);
+            } else if (page == 2) {
+              // HUMIDITY: focus details container
+              lv_group_focus_obj(humid_details);
+            } else if (page == 3) {
+              // SYSTEM: focus details container
+              lv_group_focus_obj(sys_details);
+            }
+
+  - id: !extend button_a
+    on_press:
+      then:
+        - lambda: |-
+            int page = id(current_page);
+            if (page > 0) {
+              // Any sub-page -> HOME
+              id(current_page) = 0;
+              lv_scr_load(page_home->obj);
+              lv_label_set_text(lbl_btn_c, "\xF3\xB0\x94\x8F");   // thermometer
+              lv_label_set_text(lbl_btn_b, "\xF3\xB0\x96\x8E");   // water-percent
+              lv_label_set_text(lbl_btn_a, "\xF3\xB0\x92\x93");   // cog
+            } else {
+              // HOME -> SYSTEM page
+              id(current_page) = 3;
+              lv_scr_load(page_system->obj);
+              lv_label_set_text(lbl_btn_c, "\xF3\xB0\x84\xAC");   // check
+              lv_label_set_text(lbl_btn_b, "\xF3\xB0\x8B\xBD");   // info
+              lv_label_set_text(lbl_btn_a, "\xF3\xB0\x81\x8D");   // arrow-left
+            }

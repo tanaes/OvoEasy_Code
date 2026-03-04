@@ -24,6 +24,7 @@ logger:
 api:
   encryption:
     key: !secret ha_api_key
+  reboot_timeout: 0s
 
 ota:
   - platform: esphome
@@ -46,6 +47,7 @@ sensor:
 
   - platform: internal_temperature
     name: "ESP32 Temperature"
+    id: esp32_temp
     entity_category: diagnostic
     update_interval: 60s
 

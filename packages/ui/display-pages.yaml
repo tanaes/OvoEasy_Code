@@ -1,0 +1,687 @@
+# LVGL display UI — multi-page with contextual soft-key buttons
+#
+# Navigation: buttons A/B/C (left edge) navigate pages.
+# Encoder: edits spinbox values on Temp/Humidity pages, scrolls details.
+# Top layer: MDI icon labels (always visible) show current button actions.
+#
+# Physical button order (display rotated 180°):
+#   Button C (GPIO46) = TOP of screen
+#   Button B (GPIO45) = MIDDLE
+#   Button A (GPIO0)  = BOTTOM
+
+# MDI icon font for soft-key buttons (20px, anti-aliased)
+font:
+  - file: "fonts/materialdesignicons-webfont.ttf"
+    id: mdi_20
+    size: 20
+    bpp: 4
+    glyphs:
+      - "\U000F050F"  # mdi:thermometer
+      - "\U000F058E"  # mdi:water-percent
+      - "\U000F0493"  # mdi:cog
+      - "\U000F03EB"  # mdi:pencil
+      - "\U000F02FD"  # mdi:information-outline
+      - "\U000F004D"  # mdi:arrow-left
+      - "\U000F012C"  # mdi:check
+
+lvgl:
+  displays:
+    - tft_display
+  encoders:
+    - sensor: rotary_encoder_sensor
+      enter_button: encoder_button
+      group: encoder_group
+      long_press_time: 400ms
+      long_press_repeat_time: 100ms
+  color_depth: 16
+  buffer_size: 25%
+  log_level: WARN
+
+  style_definitions:
+    # Soft-key icon button on left edge
+    - id: style_softkey
+      text_font: mdi_20
+      text_color: 0xCCCCCC
+      bg_color: 0x2A2A2A
+      bg_opa: COVER
+      pad_all: 2
+      radius: 4
+      text_align: CENTER
+
+    # Large value readout
+    - id: style_val_lg
+      text_font: montserrat_28
+      text_color: 0xFFFFFF
+
+    # Medium value / detail line
+    - id: style_val_md
+      text_font: montserrat_16
+      text_color: 0xBBBBBB
+
+    # Section header
+    - id: style_section
+      text_font: montserrat_14
+      text_color: 0x888888
+
+  # ─── TOP LAYER: Soft-key icons (always visible) ───
+  # MDI icons in 24x24px pills on left edge.
+  # Layout: C=top, B=middle, A=bottom (matching physical buttons)
+  # Icons: thermometer, water-percent, cog (home)
+  #         pencil, info, arrow-left (sub-pages)
+
+  top_layer:
+    widgets:
+      # Button C icon — TOP of screen (centered in top third)
+      - label:
+          id: lbl_btn_c
+          styles: style_softkey
+          x: 0
+          y: 41
+          width: 24
+          height: 24
+          text: "\U000F050F"
+
+      # Button B icon — MIDDLE (centered in middle third)
+      - label:
+          id: lbl_btn_b
+          styles: style_softkey
+          x: 0
+          y: 148
+          width: 24
+          height: 24
+          text: "\U000F058E"
+
+      # Button A icon — BOTTOM (centered in bottom third)
+      - label:
+          id: lbl_btn_a
+          styles: style_softkey
+          x: 0
+          y: 255
+          width: 24
+          height: 24
+          text: "\U000F0493"
+
+  # ─── PAGES ───
+
+  pages:
+    # ── HOME ──
+    - id: page_home
+      bg_color: 0x000000
+      widgets:
+        # Top band: Temperature
+        - label:
+            id: lbl_home_temp
+            styles: style_val_lg
+            x: 28
+            y: 15
+            width: 208
+            text: "--.- C"
+        - label:
+            id: lbl_home_temp_sp
+            styles: style_val_md
+            x: 28
+            y: 50
+            width: 208
+            text: "SP: --.- C"
+
+        # Middle band: Humidity + Water
+        - label:
+            id: lbl_home_humid
+            styles: style_val_lg
+            x: 28
+            y: 118
+            width: 208
+            text: "-- %RH"
+        - label:
+            id: lbl_home_humid_sp
+            styles: style_val_md
+            x: 28
+            y: 153
+            width: 208
+            text: "SP: -- %RH"
+        - bar:
+            id: bar_home_water
+            x: 32
+            y: 180
+            width: 160
+            height: 12
+            bg_color: 0x333333
+            radius: 6
+            indicator:
+              bg_color: 0x4488FF
+              radius: 6
+            min_value: 0
+            max_value: 100
+            value: 0
+        - label:
+            id: lbl_home_water
+            styles: style_val_md
+            x: 28
+            y: 196
+            width: 208
+            text: "Water: --%"
+
+        # Bottom band: System
+        - label:
+            id: lbl_home_state
+            styles: style_val_md
+            x: 28
+            y: 230
+            width: 208
+            text: "NORMAL"
+            text_color: 0x00CC00
+        - label:
+            id: lbl_home_day
+            styles: style_val_md
+            x: 28
+            y: 255
+            width: 208
+            text: ""
+        - label:
+            id: lbl_home_notify
+            x: 28
+            y: 280
+            width: 208
+            text_font: montserrat_14
+            text_color: 0xFF00FF
+            text: ""
+
+    # ── TEMP DETAIL ──
+    - id: page_temp
+      skip: true
+      bg_color: 0x000000
+      widgets:
+        - label:
+            styles: style_section
+            x: 28
+            y: 8
+            width: 208
+            text: "TEMPERATURE"
+        - label:
+            id: lbl_temp_value
+            styles: style_val_lg
+            x: 28
+            y: 28
+            width: 208
+            text: "--.- C"
+        - spinbox:
+            id: spinbox_temp_sp
+            x: 60
+            y: 62
+            width: 120
+            range_from: 20.0
+            range_to: 42.0
+            selected_digit: 0
+            digits: 3
+            decimal_places: 1
+            value: 37.5
+            group: encoder_group
+        - obj:
+            id: temp_details
+            x: 28
+            y: 100
+            width: 208
+            height: 215
+            bg_color: 0x000000
+            border_width: 0
+            scrollbar_mode: auto
+            widgets:
+              - label:
+                  id: lbl_temp_pid
+                  styles: style_val_md
+                  x: 0
+                  y: 0
+                  width: 192
+                  text: "PID: --%"
+              - label:
+                  styles: style_section
+                  x: 0
+                  y: 32
+                  width: 192
+                  text: "Sensor Comparison"
+              - label:
+                  id: lbl_temp_sht
+                  styles: style_val_md
+                  x: 0
+                  y: 52
+                  width: 192
+                  text: "SHT45: --.-"
+              - label:
+                  id: lbl_temp_hdc
+                  styles: style_val_md
+                  x: 0
+                  y: 76
+                  width: 192
+                  text: "HDC: --.-"
+              - label:
+                  id: lbl_temp_bme
+                  styles: style_val_md
+                  x: 0
+                  y: 100
+                  width: 192
+                  text: "BME: --.-"
+
+    # ── HUMIDITY DETAIL ──
+    - id: page_humidity
+      skip: true
+      bg_color: 0x000000
+      widgets:
+        - label:
+            styles: style_section
+            x: 28
+            y: 8
+            width: 208
+            text: "HUMIDITY"
+        - label:
+            id: lbl_humid_value
+            styles: style_val_lg
+            x: 28
+            y: 28
+            width: 208
+            text: "-- %RH"
+        - spinbox:
+            id: spinbox_humid_sp
+            x: 60
+            y: 62
+            width: 120
+            range_from: 30
+            range_to: 80
+            selected_digit: 0
+            digits: 2
+            decimal_places: 0
+            value: 55
+            group: encoder_group
+        - obj:
+            id: humid_details
+            x: 28
+            y: 100
+            width: 208
+            height: 215
+            bg_color: 0x000000
+            border_width: 0
+            scrollbar_mode: auto
+            widgets:
+              - label:
+                  id: lbl_humid_wstate
+                  styles: style_val_md
+                  x: 0
+                  y: 0
+                  width: 192
+                  text: "Water: IDLE"
+              - bar:
+                  id: bar_humid_water
+                  x: 0
+                  y: 28
+                  width: 160
+                  height: 12
+                  bg_color: 0x333333
+                  radius: 6
+                  indicator:
+                    bg_color: 0x4488FF
+                    radius: 6
+                  min_value: 0
+                  max_value: 100
+                  value: 0
+              - label:
+                  id: lbl_humid_est
+                  styles: style_val_md
+                  x: 0
+                  y: 46
+                  width: 192
+                  text: "Est: --%"
+              - label:
+                  id: lbl_humid_float
+                  styles: style_val_md
+                  x: 0
+                  y: 70
+                  width: 192
+                  text: "Float: -.- V"
+              - label:
+                  id: lbl_humid_fills
+                  styles: style_val_md
+                  x: 0
+                  y: 94
+                  width: 192
+                  text: "Fills: 0"
+
+    # ── SYSTEM ──
+    - id: page_system
+      skip: true
+      bg_color: 0x000000
+      widgets:
+        - label:
+            styles: style_section
+            x: 28
+            y: 8
+            width: 208
+            text: "SYSTEM"
+        - label:
+            id: lbl_sys_state
+            styles: style_val_lg
+            x: 28
+            y: 28
+            width: 208
+            text: "NORMAL"
+            text_color: 0x00CC00
+        - obj:
+            id: sys_details
+            x: 28
+            y: 64
+            width: 208
+            height: 250
+            bg_color: 0x000000
+            border_width: 0
+            scrollbar_mode: auto
+            widgets:
+              - label:
+                  id: lbl_sys_ip
+                  styles: style_val_md
+                  x: 0
+                  y: 0
+                  width: 192
+                  text: "IP: --"
+              - label:
+                  id: lbl_sys_mac
+                  styles: style_val_md
+                  x: 0
+                  y: 24
+                  width: 192
+                  text: "MAC: --"
+              - label:
+                  id: lbl_sys_wifi
+                  styles: style_val_md
+                  x: 0
+                  y: 48
+                  width: 192
+                  text: "WiFi: -- dBm"
+              - label:
+                  id: lbl_sys_uptime
+                  styles: style_val_md
+                  x: 0
+                  y: 72
+                  width: 192
+                  text: "Up: --"
+              - label:
+                  id: lbl_sys_esp
+                  styles: style_val_md
+                  x: 0
+                  y: 96
+                  width: 192
+                  text: "ESP: --.- C"
+              - label:
+                  id: lbl_sys_heap
+                  styles: style_val_md
+                  x: 0
+                  y: 120
+                  width: 192
+                  text: "Heap: -- KB"
+              - label:
+                  id: lbl_sys_ha
+                  styles: style_val_md
+                  x: 0
+                  y: 144
+                  width: 192
+                  text: "HA: --"
+              - label:
+                  id: lbl_sys_day
+                  styles: style_val_md
+                  x: 0
+                  y: 168
+                  width: 192
+                  text: "Day: --"
+
+# ─── Spinbox -> global sync ───
+
+number:
+  - platform: lvgl
+    widget: spinbox_temp_sp
+    id: lvgl_temp_sp
+    internal: true
+    on_value:
+      then:
+        - globals.set:
+            id: target_temp
+            value: !lambda "return x;"
+
+  - platform: lvgl
+    widget: spinbox_humid_sp
+    id: lvgl_humid_sp
+    internal: true
+    on_value:
+      then:
+        - globals.set:
+            id: target_humidity
+            value: !lambda "return x;"
+
+# ─── Boot sync: set spinbox values from persisted globals ───
+
+esphome:
+  on_boot:
+    priority: 200
+    then:
+      - lvgl.spinbox.update:
+          id: spinbox_temp_sp
+          value: !lambda "return id(target_temp);"
+      - lvgl.spinbox.update:
+          id: spinbox_humid_sp
+          value: !lambda "return id(target_humidity);"
+
+# ─── Label update intervals ───
+
+interval:
+  # Fast-changing values (2s)
+  - interval: 2s
+    then:
+      # Home page
+      - lvgl.label.update:
+          id: lbl_home_temp
+          text: !lambda |-
+            if (isnan(id(control_temp).state)) return std::string("--.- C");
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.1f C", id(control_temp).state);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_home_temp_sp
+          text: !lambda |-
+            char buf[16];
+            snprintf(buf, sizeof(buf), "SP: %.1f C", id(target_temp));
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_home_humid
+          text: !lambda |-
+            if (isnan(id(control_humidity).state)) return std::string("-- %RH");
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.0f %%RH", id(control_humidity).state);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_home_humid_sp
+          text: !lambda |-
+            char buf[16];
+            snprintf(buf, sizeof(buf), "SP: %.0f %%RH", id(target_humidity));
+            return std::string(buf);
+      - lvgl.bar.update:
+          id: bar_home_water
+          value: !lambda "return (int)id(water_ctrl).get_estimated_level();"
+      - lvgl.label.update:
+          id: lbl_home_water
+          text: !lambda |-
+            char buf[24];
+            snprintf(buf, sizeof(buf), "Water: ~%.0f%%", id(water_ctrl).get_estimated_level());
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_home_state
+          text: !lambda "return id(system_state_text).state;"
+      - lvgl.label.update:
+          id: lbl_home_day
+          text: !lambda |-
+            int day = id(incubation_day);
+            if (day == 0 && id(incubation_start_day) == 0) return std::string("");
+            char buf[16];
+            snprintf(buf, sizeof(buf), "Day %d/21", day);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_home_notify
+          text: !lambda |-
+            if (id(ha_notification)) return std::string("NOTIFICATION");
+            return std::string("");
+
+      # Temp page
+      - lvgl.label.update:
+          id: lbl_temp_value
+          text: !lambda |-
+            if (isnan(id(control_temp).state)) return std::string("--.- C");
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.1f C", id(control_temp).state);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_temp_pid
+          text: !lambda |-
+            if (isnan(id(pid_heat_output).state)) return std::string("PID: --%");
+            char buf[24];
+            snprintf(buf, sizeof(buf), "PID: %.0f%%", id(pid_heat_output).state);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_temp_sht
+          text: !lambda |-
+            char buf[32];
+            snprintf(buf, sizeof(buf), "SHT45: %.1f / %.0f%%",
+              isnan(id(sht45_temp).state) ? 0.0f : id(sht45_temp).state,
+              isnan(id(sht45_humidity).state) ? 0.0f : id(sht45_humidity).state);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_temp_hdc
+          text: !lambda |-
+            char buf[32];
+            snprintf(buf, sizeof(buf), "HDC: %.1f / %.0f%%",
+              isnan(id(hdc1080_temp).state) ? 0.0f : id(hdc1080_temp).state,
+              isnan(id(hdc1080_humidity).state) ? 0.0f : id(hdc1080_humidity).state);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_temp_bme
+          text: !lambda |-
+            char buf[32];
+            snprintf(buf, sizeof(buf), "BME: %.1f / %.0f%%",
+              isnan(id(bme280_temp).state) ? 0.0f : id(bme280_temp).state,
+              isnan(id(bme280_humidity).state) ? 0.0f : id(bme280_humidity).state);
+            return std::string(buf);
+
+      # Humidity page
+      - lvgl.label.update:
+          id: lbl_humid_value
+          text: !lambda |-
+            if (isnan(id(control_humidity).state)) return std::string("-- %RH");
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.0f %%RH", id(control_humidity).state);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_humid_wstate
+          text: !lambda |-
+            return std::string("Water: ") + id(water_state_text).state;
+      - lvgl.bar.update:
+          id: bar_humid_water
+          value: !lambda "return (int)id(water_ctrl).get_estimated_level();"
+      - lvgl.label.update:
+          id: lbl_humid_est
+          text: !lambda |-
+            char buf[32];
+            snprintf(buf, sizeof(buf), "Est: %.0f%% +/- %.0f%%",
+              id(water_ctrl).get_estimated_level(), id(water_ctrl).get_uncertainty());
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_humid_float
+          text: !lambda |-
+            char buf[16];
+            snprintf(buf, sizeof(buf), "Float: %.2f V",
+              isnan(id(water_level_raw).state) ? 0.0f : id(water_level_raw).state);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_humid_fills
+          text: !lambda |-
+            char buf[16];
+            snprintf(buf, sizeof(buf), "Fills: %d", (int)id(water_ctrl).get_fill_count());
+            return std::string(buf);
+
+      # System page
+      - lvgl.label.update:
+          id: lbl_sys_state
+          text: !lambda "return id(system_state_text).state;"
+      - lvgl.label.update:
+          id: lbl_sys_uptime
+          text: !lambda |-
+            if (isnan(id(uptime_sensor).state)) return std::string("Up: --");
+            int secs = (int)id(uptime_sensor).state;
+            int d = secs / 86400; int h = (secs % 86400) / 3600;
+            int m = (secs % 3600) / 60;
+            char buf[24];
+            snprintf(buf, sizeof(buf), "Up: %dd %02d:%02d", d, h, m);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_sys_heap
+          text: !lambda |-
+            char buf[24];
+            snprintf(buf, sizeof(buf), "Heap: %d KB", (int)(esp_get_free_heap_size() / 1024));
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_sys_ha
+          text: !lambda |-
+            return id(api_connected).state
+              ? std::string("HA: Connected") : std::string("HA: Disconnected");
+      - lvgl.label.update:
+          id: lbl_sys_day
+          text: !lambda |-
+            int day = id(incubation_day);
+            if (day == 0 && id(incubation_start_day) == 0) return std::string("Day: --");
+            char buf[16];
+            snprintf(buf, sizeof(buf), "Day: %d/21", day);
+            return std::string(buf);
+
+  # Slow-changing values (10s)
+  - interval: 10s
+    then:
+      - lvgl.label.update:
+          id: lbl_sys_ip
+          text: !lambda |-
+            auto ip = network::get_ip_addresses()[0].str();
+            return std::string("IP: ") + ip;
+      - lvgl.label.update:
+          id: lbl_sys_mac
+          text: !lambda |-
+            uint8_t mac[6];
+            get_mac_address_raw(mac);
+            char buf[28];
+            snprintf(buf, sizeof(buf), "MAC: %02x%02x%02x.local",
+              mac[3], mac[4], mac[5]);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_sys_wifi
+          text: !lambda |-
+            char buf[24];
+            snprintf(buf, sizeof(buf), "WiFi: %.0f dBm",
+              isnan(id(wifi_signal_sensor).state) ? 0.0f : id(wifi_signal_sensor).state);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_sys_esp
+          text: !lambda |-
+            char buf[16];
+            snprintf(buf, sizeof(buf), "ESP: %.1f C",
+              isnan(id(esp32_temp).state) ? 0.0f : id(esp32_temp).state);
+            return std::string(buf);
+
+      # Error state coloring
+      - if:
+          condition:
+            lambda: "return id(system_state) != 0;"
+          then:
+            - lvgl.label.update:
+                id: lbl_home_state
+                text_color: 0xFF0000
+            - lvgl.label.update:
+                id: lbl_sys_state
+                text_color: 0xFF0000
+          else:
+            - lvgl.label.update:
+                id: lbl_home_state
+                text_color: 0x00CC00
+            - lvgl.label.update:
+                id: lbl_sys_state
+                text_color: 0x00CC00

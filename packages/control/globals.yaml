@@ -61,6 +61,22 @@ globals:
     restore_value: true
     initial_value: "0.3"
 
+  # Phase 3: UI + telemetry
+  - id: current_page
+    type: int
+    restore_value: false
+    initial_value: "0"
+
+  - id: incubation_start_day
+    type: int
+    restore_value: true
+    initial_value: "0"
+
+  - id: incubation_day
+    type: int
+    restore_value: false
+    initial_value: "0"
+
 # HA-exposed number entities for runtime configuration
 number:
   - platform: template
