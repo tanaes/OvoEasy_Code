@@ -1,0 +1,75 @@
+# SD card CSV logger — buffered writes, daily rotation, 30-day retention
+#
+# Logs 17 sensor values every 60s to /sdcard/logs/YYYY-MM-DD.csv
+# Graceful without SD card — status sensor reports "No SD Card"
+#
+# SPI bus shared with display (esp-idf handles arbitration)
+# CS pin: GPIO14
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [sd_logger]
+
+sd_logger:
+  id: sd_log
+  cs_pin: 14
+  retention_days: 30
+  flush_interval: 60s
+
+# Assemble CSV row every 60s from live sensor values
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          // Build timestamp
+          auto now = id(rtc_time).now();
+          char ts[24];
+          if (now.is_valid()) {
+            snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d",
+                     now.year, now.month, now.day_of_month,
+                     now.hour, now.minute, now.second);
+          } else {
+            snprintf(ts, sizeof(ts), "no-time");
+          }
+
+          // Helper: NaN-safe float to string
+          auto f2s = [](float v) -> std::string {
+            if (std::isnan(v)) return std::string("");
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.2f", v);
+            return std::string(buf);
+          };
+
+          // Build CSV row
+          std::string row = std::string(ts)
+            + "," + f2s(id(control_temp).state)
+            + "," + f2s(id(control_humidity).state)
+            + "," + f2s(id(target_temp))
+            + "," + f2s(id(target_humidity))
+            + "," + f2s(id(pid_heat_output).state)
+            + "," + f2s(id(water_estimated_level).state)
+            + "," + id(water_state_text).state
+            + "," + id(system_state_text).state
+            + "," + f2s(id(system_current).state)
+            + "," + f2s(id(sht45_temp).state)
+            + "," + f2s(id(sht45_humidity).state)
+            + "," + f2s(id(hdc1080_temp).state)
+            + "," + f2s(id(hdc1080_humidity).state)
+            + "," + f2s(id(bme280_temp).state)
+            + "," + f2s(id(bme280_humidity).state)
+            + "," + f2s(id(bme280_pressure).state);
+
+          id(sd_log).log_row(row);
+
+# SD card status exposed to HA
+text_sensor:
+  - platform: template
+    name: "SD Card Status"
+    id: sd_card_status
+    icon: "mdi:micro-sd"
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      return std::string(id(sd_log).get_status());

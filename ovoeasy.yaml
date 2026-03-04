@@ -36,8 +36,8 @@ packages:
   button_actions: !include packages/ui/button-actions.yaml
 
   # Logging (Phase 3)
-  # telemetry: !include packages/logging/telemetry.yaml
-  # sdcard_logger: !include packages/logging/sdcard-logger.yaml
+  telemetry: !include packages/logging/telemetry.yaml
+  sdcard_logger: !include packages/logging/sdcard-logger.yaml
 
   # Optional (Phase 4)
   # ethernet: !include packages/base/network-ethernet.yaml

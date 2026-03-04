@@ -1,0 +1,100 @@
+# Incubation tracking + HA telemetry
+#
+# Incubation day computed from incubation_start_day (YYYYMMDD) vs RTC.
+# HA buttons to start/stop incubation. System event sensor for state transitions.
+
+# Incubation day counter — recomputed every 60s from RTC
+sensor:
+  - platform: template
+    name: "Incubation Day"
+    id: incubation_day_sensor
+    icon: "mdi:egg"
+    unit_of_measurement: "day"
+    accuracy_decimals: 0
+    update_interval: 60s
+    lambda: |-
+      int start = id(incubation_start_day);
+      if (start == 0) {
+        id(incubation_day) = 0;
+        return 0.0f;
+      }
+      auto now = id(rtc_time).now();
+      if (!now.is_valid()) {
+        return static_cast<float>(id(incubation_day));
+      }
+      // Convert YYYYMMDD to days since epoch, compute difference
+      int start_y = start / 10000;
+      int start_m = (start / 100) % 100;
+      int start_d = start % 100;
+
+      struct tm start_tm = {};
+      start_tm.tm_year = start_y - 1900;
+      start_tm.tm_mon = start_m - 1;
+      start_tm.tm_mday = start_d;
+      time_t start_epoch = mktime(&start_tm);
+
+      struct tm now_tm = {};
+      now_tm.tm_year = now.year - 1900;
+      now_tm.tm_mon = now.month - 1;
+      now_tm.tm_mday = now.day_of_month;
+      time_t now_epoch = mktime(&now_tm);
+
+      int day = (now_epoch - start_epoch) / 86400;
+      if (day < 0) day = 0;
+      id(incubation_day) = day;
+      return static_cast<float>(day);
+
+# Human-readable incubation status
+text_sensor:
+  - platform: template
+    name: "Incubation Status"
+    id: incubation_status
+    icon: "mdi:egg-outline"
+    update_interval: 60s
+    lambda: |-
+      int start = id(incubation_start_day);
+      if (start == 0) {
+        return std::string("Not incubating");
+      }
+      int day = id(incubation_day);
+      char buf[32];
+      snprintf(buf, sizeof(buf), "Day %d of 21", day);
+      return std::string(buf);
+
+  # System event — published on state transitions, useful for HA automations
+  - platform: template
+    name: "System Event"
+    id: system_event
+    icon: "mdi:bell-ring-outline"
+    entity_category: diagnostic
+
+# HA buttons for incubation control
+button:
+  - platform: template
+    name: "Start Incubation"
+    id: start_incubation_btn
+    icon: "mdi:play"
+    on_press:
+      - lambda: |-
+          auto now = id(rtc_time).now();
+          if (!now.is_valid()) {
+            ESP_LOGW("telemetry", "Cannot start incubation: RTC not synced");
+            id(system_event).publish_state("Error: RTC not synced");
+            return;
+          }
+          int today = now.year * 10000 + now.month * 100 + now.day_of_month;
+          id(incubation_start_day) = today;
+          id(incubation_day) = 0;
+          ESP_LOGI("telemetry", "Incubation started: %d", today);
+          id(system_event).publish_state("Incubation started");
+
+  - platform: template
+    name: "Stop Incubation"
+    id: stop_incubation_btn
+    icon: "mdi:stop"
+    on_press:
+      - lambda: |-
+          id(incubation_start_day) = 0;
+          id(incubation_day) = 0;
+          ESP_LOGI("telemetry", "Incubation stopped");
+          id(system_event).publish_state("Incubation stopped");

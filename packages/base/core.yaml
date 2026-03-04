@@ -11,6 +11,9 @@ esp32:
   framework:
     type: esp-idf
     version: recommended
+    sdkconfig_options:
+      CONFIG_FATFS_LFN_HEAP: y
+      CONFIG_FATFS_MAX_LFN: "255"
   flash_size: 16MB
 
 psram:
