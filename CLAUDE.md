@@ -63,6 +63,29 @@ esphome upload ovoeasy.yaml        # Flash (USB or OTA)
 ## KiCAD Schematics
 Located at: ../../PCB/incubator_controller/
 
+## Implementation Phases
+
+### Phase 1 — Foundation + Hardware (complete, `ac2488a`)
+Platform config, WiFi, RTC/NTP, all sensor packages (SHT45, HDC1080, BME280, ADS1115), display hardware, LEDs, I/O, SPI/I2C buses, hardware-test.yaml.
+
+### Phase 2 — Control Systems (complete, `cc13d34`, `dc156c6`, `13a6633`)
+- PID temperature control (`packages/control/climate-temperature.yaml`)
+- Humidity bang-bang control (`packages/control/climate-humidity.yaml`)
+- Water fill state machine custom C++ component (`components/water_controller/`)
+- System state machine + status LED feedback (data-driven color tiers)
+- Servo output (egg turner, GPIO38, 50Hz LEDC)
+
+### Phase 3 — UI, Logging, Telemetry (complete, `f4f3d17`, `f65a91d`, `bf869f4`)
+
+**3A — LVGL UI** (`f4f3d17`): 4-page display (Home, Temp, Humidity, System), MDI icon soft-keys on left edge, rotary encoder spinbox editing, contextual button actions. Spinbox boot-sync from globals included.
+
+**3B — SD Logging + Telemetry** (`f65a91d`, `bf869f4`): Buffered CSV every 60s, daily rotation, 30-day retention, SPI bus sharing with display via `sdspi_host_init_device`. FAT LFN via `CONFIG_FATFS_LFN_HEAP`. Hot-swap detection via raw sector read. Incubation day counter, start/stop HA buttons, system event sensor.
+
+**3C — Visual Polish** (optional, not yet done):
+- Horizontal separator lines between Home page bands
+- Page transition animations (`animation: MOVE_LEFT` on `lvgl.page.show`)
+- Physical soft-key Y-offset tuning (requires hardware verification)
+
 ## Known Hardware Constraints
 - **GPIO21 (CamConn) is NOT ADC-capable on ESP32-S3.** The voltage divider for camera detection must be read as digital GPIO, not analog. If true analog reading is needed, route through ADS1115 spare channel.
 - **Strapping pins** GPIO0, GPIO3, GPIO45, GPIO46 are used (buttons/status LEDs). ESPHome warns but these are intentional PCB design choices.
