@@ -5,11 +5,19 @@
 
 sensor:
   # --- SHT45 (0x44) ---
+  # Onboard heater used at low duty to drive off condensation in the high-RH
+  # incubator chamber. LOW power + SHORT pulse keeps self-heating bias minimal
+  # while still preventing moisture buildup on the sensing element.
+  #   heater_max_duty: 0.0–0.05  (fraction of time heater is on; 0.0 disables)
+  #   heater_power:    High (200mW) | Med (110mW) | Low (20mW)
+  #   heater_time:     Long (1.0s)  | Short (0.1s)
   - platform: sht4x
     i2c_id: i2c_bus
     address: 0x44
     precision: High
-    heater_max_duty: 0.0
+    heater_max_duty: 0.01
+    heater_power: Low
+    heater_time: Short
     temperature:
       name: "SHT45 Temperature"
       id: sht45_temp
