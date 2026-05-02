@@ -1,5 +1,7 @@
-# Environmental sensors: SHT45, HDC1080, BME280
-# All three are always monitored. A global select chooses which feeds control loops.
+# Environmental sensors: SHT45, HDC1080, BME280, AHT30
+# All four are always monitored. A global select chooses which feeds control loops.
+# Default "Auto" picks the first available (non-NaN) sensor in priority order:
+#   SHT4x -> BME280 -> HDC1080 -> AHT30
 
 sensor:
   # --- SHT45 (0x44) ---
@@ -77,7 +79,33 @@ sensor:
       oversampling: 16x
     update_interval: 10s
 
+  # --- AHT30 (0x38) — uses AHT20-compatible protocol ---
+  - platform: aht10
+    i2c_id: i2c_bus
+    address: 0x38
+    variant: AHT20
+    temperature:
+      name: "AHT30 Temperature"
+      id: aht30_temp
+      accuracy_decimals: 2
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+    humidity:
+      name: "AHT30 Humidity"
+      id: aht30_humidity
+      accuracy_decimals: 1
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+    update_interval: 10s
+
   # --- Template sensors: route selected sensor to control loops ---
+  # Select index map (must match options order in globals.yaml):
+  #   0 = Auto (priority: SHT45 -> BME280 -> HDC1080 -> AHT30)
+  #   1 = SHT45    2 = BME280    3 = HDC1080    4 = AHT30
   - platform: template
     name: "Control Temperature"
     id: control_temp
@@ -87,18 +115,20 @@ sensor:
     update_interval: 10s
     lambda: |-
       auto selection = id(control_sensor_select).active_index();
-      if (selection.has_value()) {
-        switch (selection.value()) {
-          case 0: return id(sht45_temp).state;
-          case 1: return id(hdc1080_temp).state;
-          case 2: return id(bme280_temp).state;
-          default:
-            ESP_LOGW("control", "Invalid sensor index %d, defaulting to SHT45", selection.value());
-            return id(sht45_temp).state;
-        }
+      int sel = selection.has_value() ? selection.value() : 0;
+      switch (sel) {
+        case 1: return id(sht45_temp).state;
+        case 2: return id(bme280_temp).state;
+        case 3: return id(hdc1080_temp).state;
+        case 4: return id(aht30_temp).state;
+        case 0:
+        default:
+          if (!isnan(id(sht45_temp).state))   return id(sht45_temp).state;
+          if (!isnan(id(bme280_temp).state))  return id(bme280_temp).state;
+          if (!isnan(id(hdc1080_temp).state)) return id(hdc1080_temp).state;
+          if (!isnan(id(aht30_temp).state))   return id(aht30_temp).state;
+          return NAN;
       }
-      ESP_LOGW("control", "No sensor selected, defaulting to SHT45");
-      return id(sht45_temp).state;
 
   - platform: template
     name: "Control Humidity"
@@ -109,15 +139,34 @@ sensor:
     update_interval: 10s
     lambda: |-
       auto selection = id(control_sensor_select).active_index();
-      if (selection.has_value()) {
-        switch (selection.value()) {
-          case 0: return id(sht45_humidity).state;
-          case 1: return id(hdc1080_humidity).state;
-          case 2: return id(bme280_humidity).state;
-          default:
-            ESP_LOGW("control", "Invalid sensor index %d, defaulting to SHT45", selection.value());
-            return id(sht45_humidity).state;
-        }
+      int sel = selection.has_value() ? selection.value() : 0;
+      switch (sel) {
+        case 1: return id(sht45_humidity).state;
+        case 2: return id(bme280_humidity).state;
+        case 3: return id(hdc1080_humidity).state;
+        case 4: return id(aht30_humidity).state;
+        case 0:
+        default:
+          if (!isnan(id(sht45_humidity).state))   return id(sht45_humidity).state;
+          if (!isnan(id(bme280_humidity).state))  return id(bme280_humidity).state;
+          if (!isnan(id(hdc1080_humidity).state)) return id(hdc1080_humidity).state;
+          if (!isnan(id(aht30_humidity).state))   return id(aht30_humidity).state;
+          return NAN;
       }
-      ESP_LOGW("control", "No sensor selected, defaulting to SHT45");
-      return id(sht45_humidity).state;
+
+  # Diagnostic: which sensor is currently feeding the control loops
+  - platform: template
+    name: "Active Control Sensor"
+    id: active_control_sensor_idx
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      auto selection = id(control_sensor_select).active_index();
+      int sel = selection.has_value() ? selection.value() : 0;
+      if (sel != 0) return (float)sel;  // manual override
+      if (!isnan(id(sht45_temp).state))   return 1.0f;
+      if (!isnan(id(bme280_temp).state))  return 2.0f;
+      if (!isnan(id(hdc1080_temp).state)) return 3.0f;
+      if (!isnan(id(aht30_temp).state))   return 4.0f;
+      return 0.0f;

@@ -24,7 +24,7 @@ static const char *const LOG_DIR = "/sdcard/ovoeasy/logs";
 static const char *const CSV_HEADER =
     "timestamp,temp,humidity,temp_sp,humid_sp,pid_output,"
     "water_level,water_state,system_state,current,"
-    "sht45_t,sht45_h,hdc_t,hdc_h,bme_t,bme_h,bme_p";
+    "sht45_t,sht45_h,hdc_t,hdc_h,bme_t,bme_h,bme_p,aht_t,aht_h";
 
 void SdLogger::setup() {
   this->buffer_.reserve(MAX_BUFFER_ROWS);

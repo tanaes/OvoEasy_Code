@@ -260,6 +260,13 @@ lvgl:
                   y: 100
                   width: 192
                   text: "BME: --.-"
+              - label:
+                  id: lbl_temp_aht
+                  styles: style_val_md
+                  x: 0
+                  y: 124
+                  width: 192
+                  text: "AHT: --.-"
 
     # ── HUMIDITY DETAIL ──
     - id: page_humidity
@@ -563,6 +570,14 @@ interval:
             snprintf(buf, sizeof(buf), "BME: %.1f / %.0f%%",
               isnan(id(bme280_temp).state) ? 0.0f : id(bme280_temp).state,
               isnan(id(bme280_humidity).state) ? 0.0f : id(bme280_humidity).state);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: lbl_temp_aht
+          text: !lambda |-
+            char buf[32];
+            snprintf(buf, sizeof(buf), "AHT: %.1f / %.0f%%",
+              isnan(id(aht30_temp).state) ? 0.0f : id(aht30_temp).state,
+              isnan(id(aht30_humidity).state) ? 0.0f : id(aht30_humidity).state);
             return std::string(buf);
 
       # Humidity page

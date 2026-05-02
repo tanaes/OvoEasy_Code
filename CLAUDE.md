@@ -28,7 +28,8 @@ Aux: LED=48
 ## I2C Devices
 - DS1307 RTC @ 0x68
 - ADS1115 ADC @ 0x48 (water level, thermistor, current monitor)
-- SHT45 @ 0x44, HDC1080 @ 0x40, BME280 @ 0x76
+- SHT45 @ 0x44, HDC1080 @ 0x40, BME280 @ 0x76, AHT30 @ 0x38 (`aht10` platform, `variant: AHT20`)
+- Env sensor priority (Auto select): SHT4x → BME280 → HDC1080 → AHT30
 - Current formula: I_OUT = V_ILM [uV] / (887 * 182)
 
 ## Repository Structure

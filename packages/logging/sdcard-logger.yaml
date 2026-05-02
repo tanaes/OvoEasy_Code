@@ -1,6 +1,6 @@
 # SD card CSV logger — buffered writes, daily rotation, 30-day retention
 #
-# Logs 17 sensor values every 60s to /sdcard/logs/YYYY-MM-DD.csv
+# Logs 19 sensor values every 60s to /sdcard/logs/YYYY-MM-DD.csv
 # Graceful without SD card — status sensor reports "No SD Card"
 #
 # SPI bus shared with display (esp-idf handles arbitration)
@@ -59,7 +59,9 @@ interval:
             + "," + f2s(id(hdc1080_humidity).state)
             + "," + f2s(id(bme280_temp).state)
             + "," + f2s(id(bme280_humidity).state)
-            + "," + f2s(id(bme280_pressure).state);
+            + "," + f2s(id(bme280_pressure).state)
+            + "," + f2s(id(aht30_temp).state)
+            + "," + f2s(id(aht30_humidity).state);
 
           id(sd_log).log_row(row);
 

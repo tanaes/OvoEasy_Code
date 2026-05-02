@@ -92,6 +92,16 @@ sensor:
       name: "Test BME280 Pressure"
     update_interval: 5s
 
+  - platform: aht10
+    i2c_id: i2c_bus
+    address: 0x38
+    variant: AHT20
+    temperature:
+      name: "Test AHT30 Temp"
+    humidity:
+      name: "Test AHT30 Humidity"
+    update_interval: 5s
+
   # ADS1115
   - platform: ads1115
     multiplexer: "A0_GND"

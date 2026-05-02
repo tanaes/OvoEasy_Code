@@ -279,15 +279,21 @@ number:
           value: !lambda "return x;"
 
 # Sensor selection
+# "Auto" picks first available (non-NaN) sensor in priority order:
+#   SHT4x -> BME280 -> HDC1080 -> AHT30
+# Manual options (1-4) override Auto with a fixed sensor.
+# Index order is referenced by lambdas in packages/hardware/sensors-env.yaml.
 select:
   - platform: template
     name: "Control Sensor"
     id: control_sensor_select
     icon: "mdi:thermometer-check"
     options:
+      - "Auto"
       - "SHT45"
-      - "HDC1080"
       - "BME280"
-    initial_option: "SHT45"
+      - "HDC1080"
+      - "AHT30"
+    initial_option: "Auto"
     optimistic: true
     restore_value: true
