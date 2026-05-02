@@ -15,9 +15,9 @@ sensor:
     i2c_id: i2c_bus
     address: 0x44
     precision: High
-    heater_max_duty: 0.01
+    heater_max_duty: 0.00167  # ~1s pulse every 10 minutes
     heater_power: Low
-    heater_time: Short
+    heater_time: Long
     temperature:
       name: "SHT45 Temperature"
       id: sht45_temp
