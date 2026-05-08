@@ -10,8 +10,8 @@ The float switch should read **high voltage (~3V) when submerged (full)** and **
 2. With the reservoir empty (float switch hanging in air): confirm reading is ~0V
 3. Submerge the float switch fully in water: confirm reading rises to ~3V
 
-If the readings are inverted (high when dry, low when submerged):
-- The JST-XH connector on J10 is backwards — unplug it, flip it 180°, and re-check
+If the readings are inverted (high when dry, low when submerged), you will need to adjust
+the logic in firmware. 
 
 > The firmware is configured with `float_switch_active_high: true` (high voltage = full). This matches hardware where the float switch pulls the line high when submerged. Do not change this setting unless you replace the sensor with a different type.
 
@@ -77,9 +77,6 @@ Set **Atomizer Drain Rate** in the web interface.
 Watch the **Water Model Uncertainty** sensor — it should decrease after each fill cycle as the model anchors to the float switch reading.
 
 ## Gotchas
-
-> ⚠️ **Never run the pump dry**
-> Running the pump without water can damage the pump motor. Ensure the reservoir has water before triggering a manual fill.
 
 > ⚠️ **300-second cooldown is a safety feature**
 > The firmware enforces a 5-minute cooldown between fills to prevent pump overheating and rapid cycling. Do not reduce this significantly.
