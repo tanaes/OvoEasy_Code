@@ -18,10 +18,10 @@ sensor:
     icon: "mdi:water-percent"
     entity_category: diagnostic
     accuracy_decimals: 2
-    update_interval: 5s
+    update_interval: 1s
     filters:
       - sliding_window_moving_average:
-          window_size: 5
+          window_size: 3
           send_every: 1
 
   # --- Optional 10k thermistor (A1) ---
@@ -31,7 +31,7 @@ sensor:
     gain: 4.096
     name: "Thermistor Raw"
     internal: true
-    update_interval: 10s
+    update_interval: 1s
 
   - platform: template
     name: "Thermistor Temperature"
@@ -39,7 +39,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     accuracy_decimals: 1
-    update_interval: 10s
+    update_interval: 1s
     lambda: |-
       // Steinhart-Hart for 10k NTC (B=3950)
       // Voltage divider: Vout = Vcc * R_ntc / (R_ref + R_ntc)
@@ -58,7 +58,7 @@ sensor:
     gain: 4.096
     name: "Current Monitor Raw"
     internal: true
-    update_interval: 10s
+    update_interval: 1s
 
   - platform: template
     name: "System Current"
@@ -66,7 +66,7 @@ sensor:
     unit_of_measurement: "A"
     device_class: current
     accuracy_decimals: 2
-    update_interval: 10s
+    update_interval: 1s
     lambda: |-
       // TPS259470 current monitor: I_OUT = V_ILM [uV] / (887 * 182)
       float v_ilm_uv = id(current_monitor_raw).state * 1000000.0;
