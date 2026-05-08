@@ -11,6 +11,7 @@ output:
     pin: GPIO5
     id: heater_pwm
     frequency: 1000Hz
+    max_power: 0.5
 
   # Binary outputs
   - platform: gpio

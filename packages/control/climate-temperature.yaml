@@ -72,7 +72,7 @@ button:
 
 # Sync runtime PID parameters and manage fan
 interval:
-  # Sync PID gains from globals every 30s
+  # Sync PID gains and heater max duty from globals every 30s
   - interval: 30s
     then:
       - climate.pid.set_control_parameters:
@@ -80,6 +80,8 @@ interval:
           kp: !lambda "return id(pid_kp_val);"
           ki: !lambda "return id(pid_ki_val);"
           kd: !lambda "return id(pid_kd_val);"
+      - lambda: |-
+          id(heater_pwm).set_max_power(id(heater_max_duty));
 
   # Fan management: always runs at minimum, ramps up on overshoot
   - interval: 5s
