@@ -12,7 +12,8 @@ water_controller:
   id: water_ctrl
   water_level_sensor: water_level_raw
   pump_output: water_pump_output
-  float_switch_threshold: 1.5  # Active-low: voltage below this = full (~0V immersed, ~3.2V dry)
+  float_switch_threshold: 1.5   # Midpoint between dry (~0V) and full (~3V)
+  float_switch_active_high: true  # true = voltage >= threshold means full; false = voltage <= threshold
   pump_fill_rate: 1.0
   drain_rate: 0.1
   fill_trigger_level: 30.0

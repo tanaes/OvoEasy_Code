@@ -30,6 +30,7 @@ class WaterController : public Component {
 
   // Model parameter setters (called from codegen + runtime sync)
   void set_float_switch_threshold(float volts) { this->float_switch_threshold_v_ = volts; }
+  void set_float_switch_active_high(bool active_high) { this->float_switch_active_high_ = active_high; }
   void set_pump_fill_rate(float pct_per_s) { this->pump_fill_rate_pct_per_s_ = pct_per_s; }
   void set_drain_rate(float pct_per_s) { this->drain_rate_pct_per_s_ = pct_per_s; }
   void set_fill_trigger_level(float pct) { this->fill_trigger_pct_ = pct; }
@@ -61,7 +62,8 @@ class WaterController : public Component {
   output::BinaryOutput *pump_output_{nullptr};
 
   // Configuration parameters
-  float float_switch_threshold_v_{1.5f};  // Active-low: below threshold = full
+  float float_switch_threshold_v_{1.5f};
+  bool float_switch_active_high_{false};  // true: voltage >= threshold = full; false: voltage <= threshold = full
   float pump_fill_rate_pct_per_s_{1.0f};
   float drain_rate_pct_per_s_{0.1f};
   float fill_trigger_pct_{30.0f};

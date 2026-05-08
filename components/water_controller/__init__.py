@@ -12,6 +12,7 @@ CONF_FILL_TRIGGER_LEVEL = "fill_trigger_level"
 CONF_CRITICAL_LOW_LEVEL = "critical_low_level"
 CONF_FILL_TIMEOUT = "fill_timeout"
 CONF_COOLDOWN_DURATION = "cooldown_duration"
+CONF_FLOAT_SWITCH_ACTIVE_HIGH = "float_switch_active_high"
 
 water_controller_ns = cg.esphome_ns.namespace("water_controller")
 WaterController = water_controller_ns.class_("WaterController", cg.Component)
@@ -38,6 +39,7 @@ CONFIG_SCHEMA = cv.Schema(
         ),
         cv.Optional(CONF_FILL_TIMEOUT, default="120s"): cv.positive_time_period_seconds,
         cv.Optional(CONF_COOLDOWN_DURATION, default="300s"): cv.positive_time_period_seconds,
+        cv.Optional(CONF_FLOAT_SWITCH_ACTIVE_HIGH, default=False): cv.boolean,
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -59,3 +61,4 @@ async def to_code(config):
     cg.add(var.set_critical_low_level(config[CONF_CRITICAL_LOW_LEVEL]))
     cg.add(var.set_fill_timeout(config[CONF_FILL_TIMEOUT].total_milliseconds))
     cg.add(var.set_cooldown_duration(config[CONF_COOLDOWN_DURATION].total_milliseconds))
+    cg.add(var.set_float_switch_active_high(config[CONF_FLOAT_SWITCH_ACTIVE_HIGH]))

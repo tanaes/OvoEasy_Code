@@ -39,8 +39,9 @@ void WaterController::setup() {
       this->debounced_full_ = false;
       this->debounce_count_ = 0;
     } else {
-      // Active-low: ~0V when immersed (full), ~3.2V when dry (not full)
-      bool initial_full = (voltage <= this->float_switch_threshold_v_);
+      bool initial_full = this->float_switch_active_high_
+                          ? (voltage >= this->float_switch_threshold_v_)
+                          : (voltage <= this->float_switch_threshold_v_);
       this->float_is_full_ = initial_full;
       this->debounced_full_ = initial_full;
       this->debounce_count_ = DEBOUNCE_THRESHOLD;
@@ -70,8 +71,9 @@ bool WaterController::read_float_switch_() {
   if (std::isnan(voltage)) {
     return false;
   }
-  // Active-low: voltage below threshold = immersed = full
-  return voltage <= this->float_switch_threshold_v_;
+  return this->float_switch_active_high_
+         ? (voltage >= this->float_switch_threshold_v_)
+         : (voltage <= this->float_switch_threshold_v_);
 }
 
 void WaterController::update_model_(uint32_t now) {
@@ -126,8 +128,9 @@ void WaterController::loop() {
   // Update model estimate (integrate rates over dt)
   this->update_model_(now);
 
-  // Read current float switch state (active-low: below threshold = full)
-  bool raw_full = (voltage <= this->float_switch_threshold_v_);
+  bool raw_full = this->float_switch_active_high_
+                  ? (voltage >= this->float_switch_threshold_v_)
+                  : (voltage <= this->float_switch_threshold_v_);
 
   // Debounce: require DEBOUNCE_THRESHOLD consecutive matching readings
   if (raw_full == this->float_is_full_) {
