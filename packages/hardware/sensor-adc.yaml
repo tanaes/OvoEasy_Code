@@ -51,10 +51,10 @@ sensor:
       float t_kelvin = 1.0 / (1.0/298.15 + ln_r/3950.0);
       return t_kelvin - 273.15;
 
-  # --- eFuse current monitor (A2) ---
+  # --- eFuse current monitor (A3) ---
   - platform: ads1115
     id: current_monitor_raw
-    multiplexer: "A2_GND"
+    multiplexer: "A3_GND"
     gain: 4.096
     name: "Current Monitor Raw"
     internal: true
