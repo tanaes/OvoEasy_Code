@@ -49,15 +49,17 @@ void SdLogger::mount_card_() {
     this->stale_vfs_ = false;
   }
 
-  ESP_LOGI(TAG, "Mounting SD card on SPI2_HOST, CS=GPIO%d...", this->cs_pin_);
+  ESP_LOGI(TAG, "Mounting SD card on SPI3_HOST, CS=GPIO%d...", this->cs_pin_);
 
   // Step 1: Add SD card as a device on the EXISTING SPI bus.
-  // ESPHome already initialized SPI2_HOST for the display, so we must NOT
-  // call spi_bus_initialize() again. Instead we attach the SD card as
-  // another device sharing the bus (arbitrated by CS pins).
+  // ESPHome's `spi:` component is configured for SPI3_HOST so that SPI2_HOST
+  // is free for the optional W5500 ethernet module. We share that same
+  // SPI3_HOST bus here. ESPHome already initialized it for the display, so
+  // we must NOT call spi_bus_initialize() again — instead we attach the SD
+  // card as another device sharing the bus (arbitrated by CS pins).
   sdspi_device_config_t dev_config = SDSPI_DEVICE_CONFIG_DEFAULT();
   dev_config.gpio_cs = static_cast<gpio_num_t>(this->cs_pin_);
-  dev_config.host_id = SPI2_HOST;
+  dev_config.host_id = SPI3_HOST;
 
   esp_err_t ret = sdspi_host_init_device(&dev_config, &this->sdspi_handle_);
   if (ret != ESP_OK) {
