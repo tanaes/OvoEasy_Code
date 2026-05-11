@@ -40,5 +40,5 @@ packages:
   sdcard_logger: !include packages/logging/sdcard-logger.yaml
 
   # Optional (Phase 4)
-  # ethernet: !include packages/base/network-ethernet.yaml
+  # Ethernet variant: see ovoeasy-eth.yaml
   # camera: !include packages/hardware/uart-camera.yaml
