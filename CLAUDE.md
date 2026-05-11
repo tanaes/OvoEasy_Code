@@ -8,7 +8,7 @@ Local UI via ILI9341 + rotary encoder. Dual logging: Home Assistant + SD card.
 ## Architecture
 - **Framework**: ESPHome (YAML packages + custom C++ components)
 - **MCU**: ESP32-S3-WROOM-1U-N16R2 (16MB flash, 2MB PSRAM)
-- **Fleet model**: Single firmware, `name_add_mac_suffix: true`, DHCP, runtime config via HA/local UI
+- **Fleet model**: Single source tree, per-network-stack variant (see "Firmware Variants" below), `name_add_mac_suffix: true`, DHCP, runtime config via HA/local UI
 - **Offline-first**: RTC for time, SD for logging, all control local
 
 ## Pin Mapping
@@ -86,8 +86,6 @@ Track which units use which variant.
 
 | MAC suffix | Variant  | Location / Notes |
 |------------|----------|------------------|
-| _example_  | wifi     | _lab bench A_    |
-| _example_  | ethernet | _wired rack B_   |
 
 ### Switching a unit between variants
 
