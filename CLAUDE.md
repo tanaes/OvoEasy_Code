@@ -14,13 +14,13 @@ Local UI via ILI9341 + rotary encoder. Dual logging: Home Assistant + SD card.
 ## Pin Mapping
 ```
 I2C: SDA=8, SCL=9
-SPI: MOSI=11, MISO=13, CLK=12, CS_LCD=10, CS_SD=14, ETH_CS=39
+SPI3 (display + SD): MOSI=11, MISO=13, CLK=12, CS_LCD=10, CS_SD=14
+SPI2 (W5500 ethernet, optional): MOSI=35, MISO=37, CLK=36, CS=39, RST=15
 MOSFET: FAN=4, HEATER=5, WATER=6, VACUUM=7, HUMIDITY=2
 Display: ILI9341 RST=16, DC=47
 Input: Encoder A=41, B=40, BTN=42 | Buttons A=0, B=45, C=46
 LEDs: STATUS_PIX=3 (WS2812B x6), CHAMBER_PIX=1 (WS2811 x2)
 Camera: TX=17, RX=18, Detect=21
-Ethernet: ETH_CS=39, ETH_RST=15
 Servo: SERVO_3v3=38
 Aux: LED=48
 ```
@@ -34,7 +34,8 @@ Aux: LED=48
 
 ## Repository Structure
 ```
-ovoeasy.yaml          # Production firmware (single image for all units)
+ovoeasy.yaml          # Production firmware — WiFi variant
+ovoeasy-eth.yaml      # Production firmware — Ethernet variant (W5500-equipped units)
 hardware-test.yaml    # PCB commissioning
 packages/base/        # Platform, WiFi, RTC/NTP
 packages/hardware/    # Sensors, display, LEDs, I/O, buses
@@ -52,10 +53,45 @@ components/           # Custom C++ (sd_logger, water_controller)
 ## Build Commands
 ```bash
 source /opt/miniconda3/etc/profile.d/conda.sh && conda activate esphome
+
+# WiFi variant (default for most units)
 esphome config ovoeasy.yaml        # Validate
 esphome compile ovoeasy.yaml       # Build
 esphome upload ovoeasy.yaml        # Flash (USB or OTA)
+
+# Ethernet variant (W5500-equipped units only)
+esphome config ovoeasy-eth.yaml
+esphome compile ovoeasy-eth.yaml
+esphome upload ovoeasy-eth.yaml
 ```
+
+## Firmware Variants
+
+Two firmware variants share one source tree. They differ ONLY in their `network:` package — all other packages are identical between `ovoeasy.yaml` and `ovoeasy-eth.yaml`.
+
+- **`ovoeasy.yaml`** — WiFi variant. Uses `packages/base/network-wifi.yaml`. WiFi client + AP fallback + captive portal.
+- **`ovoeasy-eth.yaml`** — Ethernet variant. Uses `packages/base/network-ethernet.yaml`. W5500 SPI ethernet only, no WiFi.
+
+The two stacks are mutually exclusive — ESPHome rejects YAML containing both `wifi:` and `ethernet:` blocks. Per-unit choice is therefore made at flash time, not runtime. See `docs/superpowers/plans/2026-05-08-ethernet-failover-design.md` for the full rationale.
+
+**Avoiding drift:** When adding a package, modify both top-level YAMLs in the same commit. Sanity check:
+```bash
+diff <(grep -v 'network:' ovoeasy.yaml) <(grep -v 'network:' ovoeasy-eth.yaml)
+```
+The output should be empty (only the `network:` include differs, plus the ethernet variant's extra header comment).
+
+### Fleet Roster
+
+Track which units use which variant.
+
+| MAC suffix | Variant  | Location / Notes |
+|------------|----------|------------------|
+| _example_  | wifi     | _lab bench A_    |
+| _example_  | ethernet | _wired rack B_   |
+
+### Switching a unit between variants
+
+Requires a USB reflash. An ethernet-variant unit cannot be reached via WiFi for OTA, and vice versa.
 
 ## Custom Components
 - **sd_logger**: Buffered CSV to SD card. Daily rotation, 30-day retention.
@@ -92,3 +128,4 @@ Platform config, WiFi, RTC/NTP, all sensor packages (SHT45, HDC1080, BME280, ADS
 - **Strapping pins** GPIO0, GPIO3, GPIO45, GPIO46 are used (buttons/status LEDs). ESPHome warns but these are intentional PCB design choices.
 - **rmt_channel** is no longer a valid option for `esp32_rmt_led_strip` in ESPHome 2025.12.x — auto-assigned.
 - **invert_colors** is required for `ili9xxx` display platform in ESPHome 2025.12.x.
+- **W5500 ethernet (ESP32-S3) hard-requires SPI2_HOST.** The shared display + SD SPI bus is explicitly assigned to SPI3_HOST in `packages/hardware/spi-bus.yaml` (and `components/sd_logger/sd_logger.cpp`) to free SPI2 for the optional ethernet module. The ESP32-S3 GPIO matrix routes either SPI host to any pin, so the existing PCB layout is unaffected.
