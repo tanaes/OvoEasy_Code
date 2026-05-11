@@ -1,7 +1,7 @@
 # Ethernet (W5500) Support — Design Spec
 
 **Date:** 2026-05-08
-**Status:** Approved (pending implementation)
+**Status:** Implemented 2026-05-11. **Contingency path taken** — ESPHome substitutions do NOT expand inside `!include` paths in 2025.12.4, so the two variants ship as separate top-level YAMLs (`ovoeasy.yaml` for wifi, `ovoeasy-eth.yaml` for ethernet) rather than `-s network_type`. See CLAUDE.md > "Firmware Variants" for the live build commands.
 
 ## Goal
 
