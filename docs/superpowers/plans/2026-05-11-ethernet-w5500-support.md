@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/plans/2026-05-08-ethernet-failover-design.md`
 
+**Status:** Implemented 2026-05-11. **Contingency path was triggered** at Task 2 Step 4 — ESPHome 2025.12.4 does not expand substitutions inside `!include` paths. The plan's documented fallback (separate top-level `ovoeasy-eth.yaml` entry point) was applied. Scope also expanded mid-stream to: move `wifi_info` text_sensor out of `core.yaml`, `#ifdef USE_WIFI`-guard a `wifi_signal_sensor` lambda reference in `display-pages.yaml` (with a stub sensor for ESPHome's YAML-stage validator), migrate the shared SPI bus from SPI2_HOST to SPI3_HOST in both `packages/hardware/spi-bus.yaml` and `components/sd_logger/sd_logger.cpp` (W5500 hard-requires SPI2_HOST on ESP32-S3). See CLAUDE.md > "Firmware Variants" for the live build commands.
+
 ---
 
 ## File Structure

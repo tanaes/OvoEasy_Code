@@ -53,12 +53,3 @@ sensor:
     id: esp32_temp
     entity_category: diagnostic
     update_interval: 60s
-
-text_sensor:
-  - platform: wifi_info
-    ip_address:
-      name: "IP Address"
-      entity_category: diagnostic
-    mac_address:
-      name: "MAC Address"
-      entity_category: diagnostic

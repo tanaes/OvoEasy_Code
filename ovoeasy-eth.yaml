@@ -1,10 +1,15 @@
-# OvoEasy Incubator Controller — Production Firmware
+# OvoEasy Incubator Controller — Production Firmware (Ethernet variant)
 # Single image for entire fleet. Per-unit config via HA or local UI.
+#
+# This is the W5500 ethernet variant. ESPHome rejects YAML containing both
+# `wifi:` and `ethernet:` blocks, and substitutions do not expand inside
+# `!include` paths, so the two variants are separate top-level entry points.
+# Keep this file in sync with `ovoeasy.yaml` — only the `network:` include differs.
 
 packages:
   # Base platform
   core: !include packages/base/core.yaml
-  network: !include packages/base/network-wifi.yaml
+  network: !include packages/base/network-ethernet.yaml
   time: !include packages/base/time.yaml
 
   # Hardware buses
@@ -40,5 +45,4 @@ packages:
   sdcard_logger: !include packages/logging/sdcard-logger.yaml
 
   # Optional (Phase 4)
-  # Ethernet variant: see ovoeasy-eth.yaml
   # camera: !include packages/hardware/uart-camera.yaml

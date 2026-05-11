@@ -400,7 +400,7 @@ lvgl:
                   x: 0
                   y: 48
                   width: 192
-                  text: "WiFi: -- dBm"
+                  text: "Net: --"
               - label:
                   id: lbl_sys_uptime
                   styles: style_val_md
@@ -671,8 +671,12 @@ interval:
           id: lbl_sys_wifi
           text: !lambda |-
             char buf[24];
-            snprintf(buf, sizeof(buf), "WiFi: %.0f dBm",
-              isnan(id(wifi_signal_sensor).state) ? 0.0f : id(wifi_signal_sensor).state);
+            #ifdef USE_WIFI
+              snprintf(buf, sizeof(buf), "WiFi: %.0f dBm",
+                isnan(id(wifi_signal_sensor).state) ? 0.0f : id(wifi_signal_sensor).state);
+            #else
+              snprintf(buf, sizeof(buf), "Network: Eth");
+            #endif
             return std::string(buf);
       - lvgl.label.update:
           id: lbl_sys_esp
