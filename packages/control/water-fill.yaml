@@ -101,3 +101,4 @@ interval:
           id(water_ctrl).set_pump_fill_rate(id(pump_fill_rate));
           id(water_ctrl).set_drain_rate(id(atomizer_drain_rate));
           id(water_ctrl).set_float_switch_threshold(id(float_switch_threshold));
+          id(water_ctrl).set_pump_speed(id(water_pump_speed_val) / 100.0f);

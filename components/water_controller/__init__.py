@@ -21,7 +21,7 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(WaterController),
         cv.Required(CONF_WATER_LEVEL_SENSOR): cv.use_id(sensor.Sensor),
-        cv.Required(CONF_PUMP_OUTPUT): cv.use_id(output.BinaryOutput),
+        cv.Required(CONF_PUMP_OUTPUT): cv.use_id(output.FloatOutput),
         cv.Optional(CONF_FLOAT_SWITCH_THRESHOLD, default=1.5): cv.float_range(
             min=0.1, max=3.3
         ),

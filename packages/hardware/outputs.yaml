@@ -1,4 +1,4 @@
-# MOSFET outputs — PWM for heater/fan, binary for pumps/humidifier
+# MOSFET outputs — PWM for heater/fan/pumps, binary for humidifier
 
 output:
   # PWM outputs for PID control
@@ -13,21 +13,22 @@ output:
     frequency: 1000Hz
     max_power: 0.5
 
-  # Binary outputs
+  # Binary output (bang-bang humidifier)
   - platform: gpio
     pin: GPIO2
     id: humidity_output
     inverted: false
 
-  - platform: gpio
+  # PWM outputs for pumps — driven at configured speed when "on"
+  - platform: ledc
     pin: GPIO6
     id: water_pump_output
-    inverted: false
+    frequency: 1000Hz
 
-  - platform: gpio
+  - platform: ledc
     pin: GPIO7
     id: vacuum_pump_output
-    inverted: false
+    frequency: 1000Hz
 
 # Servo PWM output (level-shifted 3.3V → 5V on PCB)
   - platform: ledc
@@ -42,6 +43,9 @@ servo:
     transition_length: 2s
 
 # Manual switches — humidifier and water pump are internal (owned by control loops)
+# Vacuum pump is a template switch so that turn_on/turn_off honour the
+# configured speed (vacuum_speed_val %). `switch.output` writes 1.0/0.0 to the
+# underlying FloatOutput, which would clobber any separately-set level.
 switch:
   - platform: output
     name: "Humidifier"
@@ -55,11 +59,20 @@ switch:
     output: water_pump_output
     internal: true
 
-  - platform: output
+  - platform: template
     name: "Vacuum Pump"
     id: vacuum_pump_switch
-    output: vacuum_pump_output
-    entity_category: ""
+    icon: "mdi:fan"
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    turn_on_action:
+      - output.set_level:
+          id: vacuum_pump_output
+          level: !lambda "return id(vacuum_speed_val) / 100.0;"
+    turn_off_action:
+      - output.set_level:
+          id: vacuum_pump_output
+          level: 0.0
 
 # Servo position control (-100% to +100%)
 number:
