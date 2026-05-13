@@ -11,6 +11,11 @@ globals:
     restore_value: true
     initial_value: "55.0"
 
+  - id: humidity_hysteresis_pct
+    type: float
+    restore_value: true
+    initial_value: "2.0"
+
   - id: water_fill_trigger
     type: float
     restore_value: true
@@ -119,6 +124,23 @@ number:
     set_action:
       - globals.set:
           id: target_humidity
+          value: !lambda "return x;"
+
+  - platform: template
+    name: "Humidity Hysteresis"
+    id: humidity_hysteresis_setpoint
+    unit_of_measurement: "%"
+    icon: "mdi:arrow-split-horizontal"
+    entity_category: config
+    min_value: 0.5
+    max_value: 5.0
+    step: 0.5
+    optimistic: true
+    restore_value: true
+    initial_value: 2.0
+    set_action:
+      - globals.set:
+          id: humidity_hysteresis_pct
           value: !lambda "return x;"
 
   - platform: template

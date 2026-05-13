@@ -1,54 +1,63 @@
-# Humidity control via thermostat platform with native humidity support
-# Temperature actions are no-ops (PID handles temperature separately)
+# Humidity bang-bang control loop.
+#
+# Replaces the previous ESPHome `thermostat` platform usage; the thermostat
+# platform's humidity_hysteresis is broken in ESPHome 2025.12.x (esphome/esphome
+# #12697 — closed-stale) and its temperature side was no-op cargo because PID
+# owns temperature on a separate climate. Rationale and alternatives:
+#   docs/superpowers/plans/2026-05-12-humidity-control-approaches.md
+#
+# Inputs:
+#   control_humidity (filtered RH%, ~10s effective window via 5-sample MA over 2s samples)
+#   target_humidity        (HA `Humidity Setpoint` number entity, percent)
+#   humidity_hysteresis_pct (HA `Humidity Hysteresis` number entity, percent)
+# Outputs:
+#   humidity_output (GPIO2 atomizer MOSFET, binary)
+#   water_ctrl.set_humidifier_active(bool)  (drives the water_controller's drain model)
+# State:
+#   humidifier_on global tracks the commanded state (non-restored — boot fresh
+#   in off state, lambda will turn on within one cycle if RH is below band).
 
-climate:
-  - platform: thermostat
-    id: humidity_climate
-    name: "Incubator Humidity"
-    sensor: control_temp
-    humidity_sensor: control_humidity
-    min_idle_time: 30s
-    min_heating_off_time: 30s
-    min_heating_run_time: 10s
-    idle_action:
-      - logger.log: "Humidity climate idle"
-    heat_action:
-      - logger.log: "Humidity climate heat (no-op, PID handles temp)"
-    # No water-critical-low interlock — maintaining humidity matters more than
-    # protecting a cheap piezo from running dry. The water_controller still
-    # tracks state for diagnostics.
-    humidity_control_humidify_action:
-      - output.turn_on: humidity_output
-      - lambda: "id(water_ctrl).set_humidifier_active(true);"
-      - logger.log: "Humidifier ON"
-    humidity_control_off_action:
-      - output.turn_off: humidity_output
-      - lambda: "id(water_ctrl).set_humidifier_active(false);"
-      - logger.log: "Humidifier OFF"
-    humidity_hysteresis: 2%
-    visual:
-      min_temperature: 20.0
-      max_temperature: 42.0
+globals:
+  - id: humidifier_on
+    type: bool
+    restore_value: false
+    initial_value: "false"
 
-# Set initial target humidity from global on boot
-esphome:
-  on_boot:
-    priority: 600
-    then:
-      - lambda: |-
-          auto call = id(humidity_climate).make_call();
-          call.set_target_humidity(id(target_humidity));
-          call.perform();
+binary_sensor:
+  - platform: template
+    name: "Humidifier Active"
+    id: humidifier_active
+    device_class: power
+    lambda: "return id(humidifier_on);"
 
-# Sync humidity setpoint changes from globals
 interval:
-  - interval: 30s
+  - interval: 5s
     then:
       - lambda: |-
-          float current_target = id(humidity_climate).target_humidity;
-          float desired = id(target_humidity);
-          if (!isnan(desired) && (isnan(current_target) || std::abs(current_target - desired) > 0.5f)) {
-            auto call = id(humidity_climate).make_call();
-            call.set_target_humidity(desired);
-            call.perform();
+          const float rh = id(control_humidity).state;
+          const float sp = id(target_humidity);
+          const float h = id(humidity_hysteresis_pct);
+          const bool on = id(humidifier_on);
+
+          // Sensor-stale fallback: if either input is NaN, force off.
+          if (isnan(rh) || isnan(sp)) {
+            if (on) {
+              id(humidity_output).turn_off();
+              id(humidifier_on) = false;
+              id(water_ctrl).set_humidifier_active(false);
+              ESP_LOGW("humidity", "Sensor NaN — humidifier OFF");
+            }
+            return;
+          }
+
+          if (!on && rh < sp - h) {
+            id(humidity_output).turn_on();
+            id(humidifier_on) = true;
+            id(water_ctrl).set_humidifier_active(true);
+            ESP_LOGI("humidity", "Humidifier ON  (RH=%.1f, SP-h=%.1f)", rh, sp - h);
+          } else if (on && rh > sp + h) {
+            id(humidity_output).turn_off();
+            id(humidifier_on) = false;
+            id(water_ctrl).set_humidifier_active(false);
+            ESP_LOGI("humidity", "Humidifier OFF (RH=%.1f, SP+h=%.1f)", rh, sp + h);
           }
