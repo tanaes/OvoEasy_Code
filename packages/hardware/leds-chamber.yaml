@@ -1,5 +1,7 @@
-# WS2811 interior chamber lighting (2 chips on GPIO1)
-# Each chip: R channel = Red LEDs, G channel = IR LEDs, B channel = White LEDs
+# WS2814 RGBW interior chamber lighting (2 chips on GPIO1).
+# RGBW: separate R, G, B, and W LEDs per chip. The white channel is the
+# primary illumination; RGB are for special-purpose colors (e.g. red for
+# low-disturbance night inspection).
 
 light:
   - platform: esp32_rmt_led_strip
@@ -9,7 +11,7 @@ light:
     num_leds: 2
     rgb_order: RGB
     chipset: WS2811
-    is_rgbw: false
+    is_rgbw: true
     use_psram: false
     rmt_symbols: 48
     default_transition_length: 500ms

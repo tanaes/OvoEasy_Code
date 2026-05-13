@@ -1,14 +1,16 @@
 # Diurnal light cycle for the chamber lights — local, RTC-driven.
 #
 # A minute-interval lambda reads the DS1307 RTC and toggles `chamber_leds`
-# on/off based on user-tunable on/off hours. Color and brightness are not
-# managed here — they preserve whatever the user last set via HA (the light
-# entity retains its remote_values across off→on transitions).
+# on/off based on user-tunable on/off hours. When the schedule turns the
+# light ON, it explicitly sets the white channel (R=G=B=0, W=1.0) — RGB
+# channels are for special-purpose use (e.g. red for night inspection),
+# the W channel is the normal illumination.
 #
 # The schedule is authoritative when enabled: if the user turns the light
-# off via HA during a "day" interval, the next tick will turn it back on.
-# To run manually (inspection, setup), flip the "Chamber Light Schedule"
-# switch off; the lambda then leaves the light alone.
+# off via HA during a "day" interval, the next tick will turn it back on
+# (in white). To run manually with a custom color (red inspection, etc.),
+# flip the "Chamber Light Schedule" switch off; the lambda then leaves
+# the light alone and any HA-set color/brightness applies.
 #
 # Time zone caveat: the hours below are interpreted in the time zone
 # configured in `packages/base/time.yaml` (currently UTC). For local-time
@@ -105,7 +107,12 @@ interval:
 
           const bool currently_on = id(chamber_leds).remote_values.is_on();
           if (should_be_on && !currently_on) {
-            id(chamber_leds).turn_on().perform();
+            auto call = id(chamber_leds).turn_on();
+            call.set_red(0.0f);
+            call.set_green(0.0f);
+            call.set_blue(0.0f);
+            call.set_white(1.0f);
+            call.perform();
           } else if (!should_be_on && currently_on) {
             id(chamber_leds).turn_off().perform();
           }
