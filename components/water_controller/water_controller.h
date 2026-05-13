@@ -3,7 +3,9 @@
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
 #include "esphome/components/sensor/sensor.h"
-#include "esphome/components/output/binary_output.h"
+#include "esphome/components/output/float_output.h"
+
+#include <algorithm>
 
 namespace esphome {
 namespace water_controller {
@@ -24,7 +26,8 @@ class WaterController : public Component {
 
   // Configuration setters (called from codegen)
   void set_water_level_sensor(sensor::Sensor *sensor) { this->water_level_sensor_ = sensor; }
-  void set_pump_output(output::BinaryOutput *output) { this->pump_output_ = output; }
+  void set_pump_output(output::FloatOutput *output) { this->pump_output_ = output; }
+  void set_pump_speed(float speed) { this->pump_speed_ = std::clamp(speed, 0.0f, 1.0f); }
   void set_fill_timeout(uint32_t timeout_ms) { this->fill_timeout_ms_ = timeout_ms; }
   void set_cooldown_duration(uint32_t duration_ms) { this->cooldown_duration_ms_ = duration_ms; }
 
@@ -59,7 +62,10 @@ class WaterController : public Component {
 
   // Hardware references
   sensor::Sensor *water_level_sensor_{nullptr};
-  output::BinaryOutput *pump_output_{nullptr};
+  output::FloatOutput *pump_output_{nullptr};
+
+  // Pump speed in 0.0..1.0 (synced from water_pump_speed_val / 100.0)
+  float pump_speed_{1.0f};
 
   // Configuration parameters
   float float_switch_threshold_v_{1.5f};

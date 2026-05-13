@@ -182,9 +182,10 @@ void WaterController::loop() {
           !this->debounced_full_ &&
           this->estimated_level_pct_ <= this->fill_trigger_pct_) {
         this->transition_to_(STATE_FILLING);
-        this->pump_output_->turn_on();
-        ESP_LOGI(TAG, "Fill triggered: estimate=%.1f%%, trigger=%.1f%%",
-                 this->estimated_level_pct_, this->fill_trigger_pct_);
+        this->pump_output_->set_level(this->pump_speed_);
+        ESP_LOGI(TAG, "Fill triggered: estimate=%.1f%%, trigger=%.1f%%, speed=%.0f%%",
+                 this->estimated_level_pct_, this->fill_trigger_pct_,
+                 this->pump_speed_ * 100.0f);
       }
       break;
 
@@ -222,10 +223,10 @@ void WaterController::request_fill() {
       ESP_LOGW(TAG, "Manual fill skipped: float switch already reads FULL");
       return;
     }
-    ESP_LOGI(TAG, "Manual fill requested");
+    ESP_LOGI(TAG, "Manual fill requested (speed=%.0f%%)", this->pump_speed_ * 100.0f);
     this->auto_fill_blocked_ = false;  // Manual request implies user supervision
     this->transition_to_(STATE_FILLING);
-    this->pump_output_->turn_on();
+    this->pump_output_->set_level(this->pump_speed_);
   } else {
     ESP_LOGW(TAG, "Cannot start fill: state is %s", this->state_to_string(this->state_));
   }
@@ -249,7 +250,7 @@ void WaterController::transition_to_(FillState new_state) {
 
 void WaterController::pump_off_() {
   if (this->pump_output_ != nullptr) {
-    this->pump_output_->turn_off();
+    this->pump_output_->set_level(0.0f);
   }
 }
 
@@ -275,6 +276,7 @@ void WaterController::dump_config() {
   ESP_LOGCONFIG(TAG, "  Drain Rate: %.2f%%/s", this->drain_rate_pct_per_s_);
   ESP_LOGCONFIG(TAG, "  Fill Trigger: %.1f%%", this->fill_trigger_pct_);
   ESP_LOGCONFIG(TAG, "  Critical Low: %.1f%%", this->critical_low_pct_);
+  ESP_LOGCONFIG(TAG, "  Pump Speed: %.0f%%", this->pump_speed_ * 100.0f);
   ESP_LOGCONFIG(TAG, "  Fill Timeout: %us", this->fill_timeout_ms_ / 1000);
   ESP_LOGCONFIG(TAG, "  Cooldown: %us", this->cooldown_duration_ms_ / 1000);
 }

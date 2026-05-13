@@ -51,6 +51,11 @@ globals:
     restore_value: true
     initial_value: "100.0"
 
+  - id: water_pump_speed_val
+    type: float
+    restore_value: true
+    initial_value: "80.0"
+
   - id: water_critical_low
     type: float
     restore_value: true
@@ -189,6 +194,7 @@ number:
     id: vacuum_speed_setpoint
     unit_of_measurement: "%"
     icon: "mdi:fan"
+    entity_category: config
     min_value: 0.0
     max_value: 100.0
     step: 5.0
@@ -198,6 +204,23 @@ number:
     set_action:
       - globals.set:
           id: vacuum_speed_val
+          value: !lambda "return x;"
+
+  - platform: template
+    name: "Water Pump Speed"
+    id: water_pump_speed_setpoint
+    unit_of_measurement: "%"
+    icon: "mdi:pump"
+    entity_category: config
+    min_value: 30.0
+    max_value: 100.0
+    step: 5.0
+    optimistic: true
+    restore_value: true
+    initial_value: 80.0
+    set_action:
+      - globals.set:
+          id: water_pump_speed_val
           value: !lambda "return x;"
 
   - platform: template
