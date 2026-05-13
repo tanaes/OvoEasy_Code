@@ -1,6 +1,5 @@
 # Humidity control via thermostat platform with native humidity support
 # Temperature actions are no-ops (PID handles temperature separately)
-# Water critical-low interlock prevents humidifier from running without water
 
 climate:
   - platform: thermostat
@@ -15,20 +14,13 @@ climate:
       - logger.log: "Humidity climate idle"
     heat_action:
       - logger.log: "Humidity climate heat (no-op, PID handles temp)"
+    # No water-critical-low interlock — maintaining humidity matters more than
+    # protecting a cheap piezo from running dry. The water_controller still
+    # tracks state for diagnostics.
     humidity_control_humidify_action:
-      - if:
-          condition:
-            lambda: "return !id(water_ctrl).is_critical_low();"
-          then:
-            - output.turn_on: humidity_output
-            - lambda: "id(water_ctrl).set_humidifier_active(true);"
-            - logger.log: "Humidifier ON"
-          else:
-            - output.turn_off: humidity_output
-            - lambda: "id(water_ctrl).set_humidifier_active(false);"
-            - logger.log:
-                level: WARN
-                format: "Humidifier BLOCKED: water critically low"
+      - output.turn_on: humidity_output
+      - lambda: "id(water_ctrl).set_humidifier_active(true);"
+      - logger.log: "Humidifier ON"
     humidity_control_off_action:
       - output.turn_off: humidity_output
       - lambda: "id(water_ctrl).set_humidifier_active(false);"
