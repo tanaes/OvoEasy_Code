@@ -34,7 +34,7 @@ sensor:
         - sliding_window_moving_average:
             window_size: 5
             send_every: 1
-    update_interval: 10s
+    update_interval: 2s
 
   # --- HDC1080 (0x40) ---
   - platform: hdc1080
@@ -56,7 +56,7 @@ sensor:
         - sliding_window_moving_average:
             window_size: 5
             send_every: 1
-    update_interval: 10s
+    update_interval: 2s
 
   # --- BME280 (0x76) ---
   - platform: bme280_i2c
@@ -85,7 +85,7 @@ sensor:
       id: bme280_pressure
       accuracy_decimals: 1
       oversampling: 16x
-    update_interval: 10s
+    update_interval: 2s
 
   # --- AHT30 (0x38) — uses AHT20-compatible protocol ---
   - platform: aht10
@@ -108,7 +108,7 @@ sensor:
         - sliding_window_moving_average:
             window_size: 5
             send_every: 1
-    update_interval: 10s
+    update_interval: 2s
 
   # --- Template sensors: route selected sensor to control loops ---
   # Select index map (must match options order in globals.yaml):
@@ -120,7 +120,7 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     accuracy_decimals: 2
-    update_interval: 10s
+    update_interval: 2s
     lambda: |-
       auto selection = id(control_sensor_select).active_index();
       int sel = selection.has_value() ? selection.value() : 0;
@@ -144,7 +144,7 @@ sensor:
     unit_of_measurement: "%"
     device_class: humidity
     accuracy_decimals: 1
-    update_interval: 10s
+    update_interval: 2s
     lambda: |-
       auto selection = id(control_sensor_select).active_index();
       int sel = selection.has_value() ? selection.value() : 0;
