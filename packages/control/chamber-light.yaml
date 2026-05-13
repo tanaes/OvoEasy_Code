@@ -1,0 +1,111 @@
+# Diurnal light cycle for the chamber lights — local, RTC-driven.
+#
+# A minute-interval lambda reads the DS1307 RTC and toggles `chamber_leds`
+# on/off based on user-tunable on/off hours. Color and brightness are not
+# managed here — they preserve whatever the user last set via HA (the light
+# entity retains its remote_values across off→on transitions).
+#
+# The schedule is authoritative when enabled: if the user turns the light
+# off via HA during a "day" interval, the next tick will turn it back on.
+# To run manually (inspection, setup), flip the "Chamber Light Schedule"
+# switch off; the lambda then leaves the light alone.
+#
+# Time zone caveat: the hours below are interpreted in the time zone
+# configured in `packages/base/time.yaml` (currently UTC). For local-time
+# scheduling, change `timezone:` on the sntp platform there.
+
+globals:
+  - id: light_on_hour
+    type: float
+    restore_value: true
+    initial_value: "6.0"
+
+  - id: light_off_hour
+    type: float
+    restore_value: true
+    initial_value: "18.0"
+
+  - id: light_schedule_enabled
+    type: bool
+    restore_value: true
+    initial_value: "true"
+
+number:
+  - platform: template
+    name: "Light On Hour"
+    id: light_on_hour_setpoint
+    unit_of_measurement: "h"
+    icon: "mdi:weather-sunset-up"
+    entity_category: config
+    min_value: 0.0
+    max_value: 24.0
+    step: 0.5
+    optimistic: true
+    restore_value: true
+    initial_value: 6.0
+    set_action:
+      - globals.set:
+          id: light_on_hour
+          value: !lambda "return x;"
+
+  - platform: template
+    name: "Light Off Hour"
+    id: light_off_hour_setpoint
+    unit_of_measurement: "h"
+    icon: "mdi:weather-sunset-down"
+    entity_category: config
+    min_value: 0.0
+    max_value: 24.0
+    step: 0.5
+    optimistic: true
+    restore_value: true
+    initial_value: 18.0
+    set_action:
+      - globals.set:
+          id: light_off_hour
+          value: !lambda "return x;"
+
+switch:
+  - platform: template
+    name: "Chamber Light Schedule"
+    id: chamber_light_schedule_switch
+    icon: "mdi:calendar-clock"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - globals.set:
+          id: light_schedule_enabled
+          value: "true"
+    turn_off_action:
+      - globals.set:
+          id: light_schedule_enabled
+          value: "false"
+
+interval:
+  - interval: 1min
+    then:
+      - lambda: |-
+          if (!id(light_schedule_enabled)) return;
+
+          auto t = id(rtc_time).now();
+          if (!t.is_valid()) return;
+
+          const float now_h = t.hour + t.minute / 60.0f;
+          const float on_h = id(light_on_hour);
+          const float off_h = id(light_off_hour);
+
+          // Schedule wraps midnight when off_h < on_h (e.g. on=22, off=06).
+          bool should_be_on;
+          if (on_h <= off_h) {
+            should_be_on = (now_h >= on_h && now_h < off_h);
+          } else {
+            should_be_on = (now_h >= on_h || now_h < off_h);
+          }
+
+          const bool currently_on = id(chamber_leds).remote_values.is_on();
+          if (should_be_on && !currently_on) {
+            id(chamber_leds).turn_on().perform();
+          } else if (!should_be_on && currently_on) {
+            id(chamber_leds).turn_off().perform();
+          }

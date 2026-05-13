@@ -34,6 +34,7 @@ packages:
   water_fill: !include packages/control/water-fill.yaml
   climate_temp: !include packages/control/climate-temperature.yaml
   climate_humidity: !include packages/control/climate-humidity.yaml
+  chamber_light: !include packages/control/chamber-light.yaml
   system_state: !include packages/control/system-state.yaml
 
   # UI (Phase 3)
